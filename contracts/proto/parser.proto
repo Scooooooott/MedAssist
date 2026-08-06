@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package medassist.contracts.v1;
+
+import "common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.medassist.contracts.v1";
+option java_outer_classname = "ParserProto";
+
+service ParserService {
+  rpc ParseDocument(ParseRequest) returns (ParseResponse);
+}
+
+message ParseRequest {
+  RequestMetadata metadata = 1;
+  string storage_uri = 2;
+  string mime_type = 3;
+  string source_id = 4;
+  map<string, string> options = 5;
+}
+
+message ParseResponse {
+  DocumentIR ir = 1;
+  ParseStatus parse_status = 2;
+  repeated string warnings = 3;
+  ErrorDetail error = 4;
+}
+
+enum ParseStatus {
+  PARSE_STATUS_UNSPECIFIED = 0;
+  PARSE_STATUS_SUCCEEDED = 1;
+  PARSE_STATUS_FAILED = 2;
+  PARSE_STATUS_PARTIAL = 3;
+}
+
+message DocumentIR {
+  repeated Section sections = 1;
+  repeated TableBlock tables = 2;
+  map<string, string> metadata = 3;
+}
+
+message Section {
+  string path = 1;
+  string heading = 2;
+  int32 level = 3;
+  string text = 4;
+  repeated Section children = 5;
+  SourceRange source_range = 6;
+}
+
+message TableBlock {
+  string caption = 1;
+  repeated string headers = 2;
+  repeated TableRow rows = 3;
+  SourceRange source_range = 4;
+}
+
+message TableRow {
+  map<string, string> cells = 1;
+}

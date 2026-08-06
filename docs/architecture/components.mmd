@@ -1,0 +1,39 @@
+flowchart TB
+  subgraph ingestion["ingestion service"]
+    ingest_api["Job trigger endpoint"]
+    batch["Spring Batch job"]
+    parse_step["Parse step"]
+    deid_step["De-identification step"]
+    chunk_step["Structure-aware chunk step"]
+    embed_step["Embedding step"]
+    quarantine["Quarantine writer"]
+  end
+
+  subgraph retrieval["retrieval service"]
+    search_api["Search endpoint"]
+    embed_client["Embedding client"]
+    vector_search["Vector search adapter"]
+    filters["Metadata filter builder"]
+    citation["M1 citation existence check"]
+  end
+
+  parser["parser-svc"]
+  deid["deid-svc"]
+  model["model-svc"]
+  postgres[("Postgres")]
+  minio[("MinIO")]
+
+  ingest_api --> batch
+  batch --> parse_step --> parser
+  parse_step --> minio
+  batch --> deid_step --> deid
+  batch --> chunk_step
+  batch --> embed_step --> model
+  batch --> quarantine
+  chunk_step --> postgres
+  embed_step --> postgres
+
+  search_api --> embed_client --> model
+  search_api --> filters
+  filters --> vector_search --> postgres
+  vector_search --> citation

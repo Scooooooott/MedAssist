@@ -1,0 +1,72 @@
+services:
+  parser-svc:
+    build:
+      context: ../..
+      dockerfile: python-services/parser-svc/Dockerfile
+    profiles: ["pipeline", "full"]
+    environment:
+      MEDASSIST_GRPC_WORKERS: ${MEDASSIST_GRPC_WORKERS:-4}
+      MEDASSIST_GRPC_MAX_CONCURRENT_RPCS: ${MEDASSIST_GRPC_MAX_CONCURRENT_RPCS:-32}
+    ports:
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 9001), 2); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  deid-svc:
+    build:
+      context: ../..
+      dockerfile: python-services/deid-svc/Dockerfile
+    profiles: ["pipeline", "full"]
+    environment:
+      MEDASSIST_GRPC_WORKERS: ${MEDASSIST_GRPC_WORKERS:-4}
+      MEDASSIST_GRPC_MAX_CONCURRENT_RPCS: ${MEDASSIST_GRPC_MAX_CONCURRENT_RPCS:-32}
+    ports:
+      - "9002:9002"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 9002), 2); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  model-svc:
+    build:
+      context: ../..
+      dockerfile: python-services/model-svc/Dockerfile
+    profiles: ["pipeline", "full"]
+    environment:
+      MEDASSIST_GRPC_WORKERS: ${MEDASSIST_GRPC_WORKERS:-4}
+      MEDASSIST_GRPC_MAX_CONCURRENT_RPCS: ${MEDASSIST_GRPC_MAX_CONCURRENT_RPCS:-32}
+    ports:
+      - "9003:9003"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('localhost', 9003), 2); s.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  ingestion:
+    build:
+      context: ../..
+      dockerfile: services/ingestion/Dockerfile
+    profiles: ["pipeline", "full"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+      parser-svc:
+        condition: service_healthy
+      deid-svc:
+        condition: service_healthy
+      model-svc:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10

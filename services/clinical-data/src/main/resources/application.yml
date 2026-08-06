@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: clinical-data
+server:
+  port: 8083
+logging:
+  pattern:
+    level: "%5p [trace_id=%X{trace_id:-}]"
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

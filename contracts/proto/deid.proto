@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package medassist.contracts.v1;
+
+import "common.proto";
+
+option java_multiple_files = true;
+option java_package = "com.medassist.contracts.v1";
+option java_outer_classname = "DeidProto";
+
+service DeidService {
+  rpc Detect(DetectRequest) returns (DetectResponse);
+  rpc Anonymize(AnonymizeRequest) returns (AnonymizeResponse);
+}
+
+message DetectRequest {
+  RequestMetadata metadata = 1;
+  string text = 2;
+  map<string, string> options = 3;
+}
+
+message DetectResponse {
+  repeated PhiEntity entities = 1;
+  string policy_version = 2;
+  ErrorDetail error = 3;
+}
+
+message AnonymizeRequest {
+  RequestMetadata metadata = 1;
+  string text = 2;
+  DeidPolicy policy = 3;
+  map<string, string> options = 4;
+}
+
+message AnonymizeResponse {
+  string text = 1;
+  repeated PhiEntity entities = 2;
+  string policy_version = 3;
+  ErrorDetail error = 4;
+}
+
+enum DeidPolicy {
+  DEID_POLICY_UNSPECIFIED = 0;
+  SAFE_HARBOR_SURROGATE = 1;
+  SAFE_HARBOR_REDACT = 2;
+}
+
+message PhiEntity {
+  string entity_type = 1;
+  int32 start = 2;
+  int32 end = 3;
+  double score = 4;
+  string recognizer = 5;
+}

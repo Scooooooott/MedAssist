@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: agent
+server:
+  port: 8085
+logging:
+  pattern:
+    level: "%5p [trace_id=%X{trace_id:-}]"
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

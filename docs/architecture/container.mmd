@@ -1,0 +1,48 @@
+flowchart TB
+  subgraph users["Users"]
+    clinician["Clinician"]
+    researcher["Researcher"]
+    admin["Administrator"]
+  end
+
+  gateway["gateway\nJava REST"]
+  identity["identity-policy\nJava PDP"]
+  ingestion["ingestion\nJava Spring Batch"]
+  clinical["clinical-data\nJava FHIR"]
+  retrieval["retrieval\nJava retrieval API"]
+  agent["agent\nJava orchestration"]
+  audit["audit-governance\nJava audit and BFF"]
+  parser["parser-svc\nPython gRPC"]
+  deid["deid-svc\nPython gRPC"]
+  model["model-svc\nPython gRPC"]
+
+  postgres[("Postgres 17 + pgvector")]
+  minio[("MinIO versioned buckets")]
+  redis[("Redis")]
+  redpanda[("Redpanda")]
+  keycloak["Keycloak"]
+  llm["External LLM API"]
+
+  clinician --> gateway
+  researcher --> gateway
+  admin --> gateway
+  gateway --> identity
+  gateway --> retrieval
+  gateway --> agent
+  gateway --> audit
+  ingestion --> parser
+  ingestion --> deid
+  ingestion --> model
+  ingestion --> postgres
+  ingestion --> minio
+  clinical --> postgres
+  retrieval --> postgres
+  retrieval --> model
+  retrieval --> redis
+  agent --> retrieval
+  agent --> clinical
+  agent --> deid
+  agent --> llm
+  audit --> postgres
+  audit --> redpanda
+  identity --> keycloak

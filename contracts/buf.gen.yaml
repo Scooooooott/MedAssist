@@ -1,0 +1,10 @@
+version: v2
+plugins:
+  - remote: buf.build/protocolbuffers/java
+    out: contracts/target/generated-sources/protobuf/java
+  - remote: buf.build/grpc/java
+    out: contracts/target/generated-sources/protobuf/grpc-java
+  - remote: buf.build/protocolbuffers/python
+    out: python-services/_generated
+  - remote: buf.build/grpc/python
+    out: python-services/_generated

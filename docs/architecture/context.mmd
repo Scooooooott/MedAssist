@@ -1,0 +1,13 @@
+flowchart LR
+  clinician["Clinician"]
+  researcher["Researcher"]
+  admin["Administrator"]
+  data_sources["Public and Synthetic Data Sources"]
+  llm["External LLM API"]
+  system["MedAssist Healthcare RAG System"]
+
+  clinician -->|Ask citation-grounded medical information questions| system
+  researcher -->|Evaluate and explore de-identified corpora| system
+  admin -->|Review governance, audit, and operations| system
+  data_sources -->|Documents and synthetic FHIR records| system
+  system -->|De-identified prompts after egress checks| llm
