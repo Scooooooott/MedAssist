@@ -24,7 +24,7 @@ This project does not need server-side rendering because the application is an a
 
 | Alternative | Rejection reason |
 |---|---|
-| Thymeleaf templates for the public frontend | Server-rendered templates are fast to start, but they would make streaming markdown rendering, virtualized citation lists, and component-level interaction tests harder to evolve. They would also be replaced later, creating throwaway work. This rejection does not apply to the internal Django-based ops console, which serves a different workflow. |
+| Server-rendered Java templates for the public frontend | Server-rendered templates are fast to start, but they would make streaming markdown rendering, virtualized citation lists, and component-level interaction tests harder to evolve. They would also be replaced later, creating throwaway work. This rejection does not apply to the internal Django-based ops console, which serves a different workflow. |
 | Temporary minimal page followed by an M6 rewrite | A rewrite hides frontend engineering progress and increases total work. A single React codebase can grow from M1 baseline UI to the M6 demo. |
 | Next.js static export | Static export is viable, but the project does not need file-system routing, React Server Components, SSR, or SEO features. Vite has a smaller conceptual surface for this SPA. |
 | JavaScript without TypeScript | TypeScript strict mode is needed to keep API DTOs, SSE event handling, citation spans, and UI states explicit and testable. |
