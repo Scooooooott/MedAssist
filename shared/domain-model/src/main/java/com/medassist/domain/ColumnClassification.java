@@ -1,8 +1,8 @@
 package com.medassist.domain;
 
 /**
- * Column-level data sensitivity. This is orthogonal to {@link ContentDomain} and drives grants
- * and row-level security policy generation.
+ * Column-level data sensitivity. This is orthogonal to {@link ContentDomain} and drives grants and
+ * row-level security policy generation.
  */
 public enum ColumnClassification {
   PHI_DIRECT,

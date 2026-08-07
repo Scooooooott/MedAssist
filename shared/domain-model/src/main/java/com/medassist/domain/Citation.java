@@ -4,11 +4,7 @@ import java.util.Objects;
 import java.util.UUID;
 
 public record Citation(
-    UUID chunkId,
-    UUID documentVersionId,
-    int startOffset,
-    int endOffset,
-    String quotedSpanHash) {
+    UUID chunkId, UUID documentVersionId, int startOffset, int endOffset, String quotedSpanHash) {
   public Citation {
     Objects.requireNonNull(chunkId, "chunkId");
     Objects.requireNonNull(documentVersionId, "documentVersionId");

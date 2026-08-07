@@ -24,6 +24,13 @@ def main() -> int:
     parser.add_argument("--manifest-only", action="store_true", help="Write source manifest only.")
     args = parser.parse_args()
 
+    if not args.manifest_only:
+        print(
+            "Full dataset download is not implemented in the current repository state. "
+            "Run with --manifest-only to create the reviewed local directory scaffold.",
+        )
+        return 2
+
     DATA_DIR.mkdir(exist_ok=True)
     for name in SOURCES:
         (DATA_DIR / name).mkdir(exist_ok=True)

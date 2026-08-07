@@ -5,12 +5,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.batch.core.job.Job;
 import org.springframework.batch.core.job.JobExecution;
+import org.springframework.batch.core.job.builder.JobBuilder;
 import org.springframework.batch.core.listener.JobExecutionListener;
+import org.springframework.batch.core.listener.StepExecutionListener;
+import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.Step;
 import org.springframework.batch.core.step.StepExecution;
-import org.springframework.batch.core.listener.StepExecutionListener;
-import org.springframework.batch.core.job.builder.JobBuilder;
-import org.springframework.batch.core.repository.JobRepository;
 import org.springframework.batch.core.step.builder.StepBuilder;
 import org.springframework.batch.infrastructure.repeat.RepeatStatus;
 import org.springframework.context.annotation.Bean;
@@ -56,7 +56,8 @@ public class IngestionBatchConfiguration {
   }
 
   @Bean
-  Step indexStep(final JobRepository jobRepository, final PlatformTransactionManager transactionManager) {
+  Step indexStep(
+      final JobRepository jobRepository, final PlatformTransactionManager transactionManager) {
     return skeletonStep(jobRepository, transactionManager, "indexStep");
   }
 
@@ -96,11 +97,15 @@ public class IngestionBatchConfiguration {
     return new StepExecutionListener() {
       @Override
       public void beforeStep(final StepExecution stepExecution) {
-        LOGGER.info("step started: name={}, executionId={}", stepExecution.getStepName(), stepExecution.getId());
+        LOGGER.info(
+            "step started: name={}, executionId={}",
+            stepExecution.getStepName(),
+            stepExecution.getId());
       }
 
       @Override
-      public org.springframework.batch.core.ExitStatus afterStep(final StepExecution stepExecution) {
+      public org.springframework.batch.core.ExitStatus afterStep(
+          final StepExecution stepExecution) {
         LOGGER.info(
             "step finished: name={}, read={}, write={}, skip={}, durationMs={}",
             stepExecution.getStepName(),
@@ -109,7 +114,9 @@ public class IngestionBatchConfiguration {
             stepExecution.getSkipCount(),
             stepExecution.getEndTime() == null || stepExecution.getStartTime() == null
                 ? -1
-                : java.time.Duration.between(stepExecution.getStartTime(), stepExecution.getEndTime()).toMillis());
+                : java.time.Duration.between(
+                        stepExecution.getStartTime(), stepExecution.getEndTime())
+                    .toMillis());
         return stepExecution.getExitStatus();
       }
     };

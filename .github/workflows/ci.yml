@@ -15,6 +15,8 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
+      - name: Check Java formatting and static rules
+        run: mvn spotless:check checkstyle:check
       - name: Verify Java modules
         run: mvn clean verify
 
@@ -35,6 +37,28 @@ jobs:
         run: uv run --project python-services/${{ matrix.service }} mypy src tests
       - name: Test
         run: uv run --project python-services/${{ matrix.service }} pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Enable package manager
+        run: corepack enable
+      - name: Install frontend dependencies
+        run: corepack pnpm --dir frontend install --frozen-lockfile
+      - name: Lint frontend
+        run: corepack pnpm --dir frontend run lint
+      - name: Check frontend formatting
+        run: corepack pnpm --dir frontend run format
+      - name: Test frontend
+        run: corepack pnpm --dir frontend run test
+      - name: Build frontend
+        run: corepack pnpm --dir frontend run build
 
   contracts:
     runs-on: ubuntu-latest
@@ -62,8 +86,8 @@ jobs:
           distribution: temurin
           java-version: "21"
           cache: maven
-      - name: Integration placeholder
-        run: mvn -pl tools/architecture-tests -am verify
+      - name: Run infrastructure smoke tests
+        run: mvn -f tools/integration-smoke/pom.xml test
 
   security:
     runs-on: ubuntu-latest
@@ -77,5 +101,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Public English check
-        run: python scripts/scan_language.py
+        run: python scripts/scan_language.py --commits

@@ -41,9 +41,12 @@ public class AnswerService {
             request.modelName(),
             request.modelVersion());
     final SearchOutcome outcome = retrievalService.search(searchRequest);
-    final List<CitationCandidate> candidates = outcome.chunks().stream().findFirst().map(this::citationFrom).stream().toList();
-    final List<CitationValidationResult> validationResults = citationValidator.validate(candidates, outcome.chunks());
-    final List<CitationDto> citations = validationResults.stream().map(this::toDto).filter(CitationDto::valid).toList();
+    final List<CitationCandidate> candidates =
+        outcome.chunks().stream().findFirst().map(this::citationFrom).stream().toList();
+    final List<CitationValidationResult> validationResults =
+        citationValidator.validate(candidates, outcome.chunks());
+    final List<CitationDto> citations =
+        validationResults.stream().map(this::toDto).filter(CitationDto::valid).toList();
     final boolean sufficientEvidence = !citations.isEmpty();
     final String answerText =
         sufficientEvidence
@@ -64,8 +67,10 @@ public class AnswerService {
   }
 
   private CitationCandidate citationFrom(final RetrievedChunk chunk) {
-    final String quotedSpan = chunk.text().length() <= 240 ? chunk.text() : chunk.text().substring(0, 240);
-    return new CitationCandidate(chunk.chunkId(), chunk.documentVersionId(), quotedSpan, "top retrieved chunk");
+    final String quotedSpan =
+        chunk.text().length() <= 240 ? chunk.text() : chunk.text().substring(0, 240);
+    return new CitationCandidate(
+        chunk.chunkId(), chunk.documentVersionId(), quotedSpan, "top retrieved chunk");
   }
 
   private CitationDto toDto(final CitationValidationResult result) {

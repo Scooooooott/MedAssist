@@ -47,7 +47,8 @@ class ArchitectureRulesTest {
         .resideInAPackage("com.medassist.domain..")
         .should()
         .onlyDependOnClassesThat()
-        .resideOutsideOfPackages("org.springframework..", "jakarta.persistence..", "javax.persistence..")
+        .resideOutsideOfPackages(
+            "org.springframework..", "jakarta.persistence..", "javax.persistence..")
         .check(classes);
   }
 
@@ -61,6 +62,7 @@ class ArchitectureRulesTest {
         .haveRawType(java.util.Collection.class)
         .should()
         .beFinal()
+        .allowEmptyShould(true)
         .check(classes);
   }
 

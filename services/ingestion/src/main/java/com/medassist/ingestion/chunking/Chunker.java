@@ -6,5 +6,6 @@ import java.util.List;
 import java.util.UUID;
 
 public interface Chunker {
-  List<Chunk> chunk(UUID documentVersionId, String documentTitle, DocumentIR ir, ChunkingOptions options);
+  List<Chunk> chunk(
+      UUID documentVersionId, String documentTitle, DocumentIR ir, ChunkingOptions options);
 }

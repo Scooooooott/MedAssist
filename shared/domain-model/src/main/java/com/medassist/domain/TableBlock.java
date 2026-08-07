@@ -19,7 +19,8 @@ public record TableBlock(
     sourceRange = sourceRange == null ? new SourceRange(0, linearizedText.length()) : sourceRange;
   }
 
-  public TableBlock(final String caption, final List<String> headers, final List<Map<String, String>> rows) {
+  public TableBlock(
+      final String caption, final List<String> headers, final List<Map<String, String>> rows) {
     this("", caption, headers, rows, "", null);
   }
 }

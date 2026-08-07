@@ -25,19 +25,23 @@ public class IngestionJobController {
   }
 
   @PostMapping("/document-ingestion")
-  ResponseEntity<IngestionJobResponse> trigger(@RequestBody(required = false) final IngestionJobRequest request)
-      throws Exception {
-    final IngestionJobRequest effectiveRequest = request == null ? new IngestionJobRequest(null, false) : request;
+  ResponseEntity<IngestionJobResponse> trigger(
+      @RequestBody(required = false) final IngestionJobRequest request) throws Exception {
+    final IngestionJobRequest effectiveRequest =
+        request == null ? new IngestionJobRequest(null, false) : request;
     final JobParameters parameters =
         new JobParametersBuilder()
             .addString("requestedAt", Instant.now().toString())
-            .addString("sourceScope", effectiveRequest.sourceScope() == null ? "all" : effectiveRequest.sourceScope())
+            .addString(
+                "sourceScope",
+                effectiveRequest.sourceScope() == null ? "all" : effectiveRequest.sourceScope())
             .addString("forceReprocess", Boolean.toString(effectiveRequest.forceReprocess()))
             .toJobParameters();
     try {
       final JobExecution execution = jobLauncher.run(documentIngestionJob, parameters);
       return ResponseEntity.accepted()
-          .body(new IngestionJobResponse(execution.getId(), execution.getStatus().name(), "started"));
+          .body(
+              new IngestionJobResponse(execution.getId(), execution.getStatus().name(), "started"));
     } catch (final IllegalStateException exception) {
       return ResponseEntity.status(HttpStatus.CONFLICT)
           .body(new IngestionJobResponse(null, "ALREADY_RUNNING", exception.getMessage()));

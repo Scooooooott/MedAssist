@@ -17,7 +17,8 @@ public class CitationValidator {
   public List<CitationValidationResult> validate(
       final List<CitationCandidate> citations, final Collection<RetrievedChunk> chunks) {
     final Map<UUID, RetrievedChunk> chunksById =
-        chunks.stream().collect(Collectors.toUnmodifiableMap(RetrievedChunk::chunkId, Function.identity()));
+        chunks.stream()
+            .collect(Collectors.toUnmodifiableMap(RetrievedChunk::chunkId, Function.identity()));
     return citations.stream().map(citation -> validateOne(citation, chunksById)).toList();
   }
 
@@ -31,13 +32,15 @@ public class CitationValidator {
       return new CitationValidationResult(citation, false, "citation chunk was not retrieved");
     }
     if (!chunk.documentVersionId().equals(citation.documentVersionId())) {
-      return new CitationValidationResult(citation, false, "citation documentVersionId does not match chunk");
+      return new CitationValidationResult(
+          citation, false, "citation documentVersionId does not match chunk");
     }
     if (!StringUtils.hasText(citation.quotedSpan())) {
       return new CitationValidationResult(citation, false, "citation quotedSpan is empty");
     }
     if (!chunk.text().contains(citation.quotedSpan())) {
-      return new CitationValidationResult(citation, false, "citation quotedSpan was not found in chunk");
+      return new CitationValidationResult(
+          citation, false, "citation quotedSpan was not found in chunk");
     }
     return new CitationValidationResult(citation, true, "quotedSpan exists in retrieved chunk");
   }

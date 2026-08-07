@@ -49,7 +49,8 @@ public class RetrievalService {
     final int requestedTopK =
         effectiveRequest.topK() == null ? properties.getDefaultTopK() : effectiveRequest.topK();
     final int topK = Math.max(1, Math.min(requestedTopK, properties.getMaxTopK()));
-    final String role = StringUtils.hasText(effectiveRequest.role()) ? effectiveRequest.role() : "CLINICIAN";
+    final String role =
+        StringUtils.hasText(effectiveRequest.role()) ? effectiveRequest.role() : "CLINICIAN";
     final String modelName =
         StringUtils.hasText(effectiveRequest.modelName())
             ? effectiveRequest.modelName()

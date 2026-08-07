@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.medassist</groupId>
@@ -41,12 +39,17 @@
     <maven-clean.version>3.3.2</maven-clean.version>
     <maven-deploy.version>3.1.4</maven-deploy.version>
     <maven-install.version>3.1.4</maven-install.version>
+    <maven-jar.version>3.4.2</maven-jar.version>
+    <maven-resources.version>3.3.1</maven-resources.version>
     <maven-site.version>3.12.1</maven-site.version>
+    <maven-surefire.version>3.5.3</maven-surefire.version>
     <protobuf.version>4.29.3</protobuf.version>
     <grpc.version>1.69.0</grpc.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <javax-annotation.version>1.3.2</javax-annotation.version>
+    <error-prone-annotations.version>2.30.0</error-prone-annotations.version>
+    <jsonschema-generator.version>5.0.0</jsonschema-generator.version>
   </properties>
 
   <!--
@@ -103,6 +106,26 @@
         <artifactId>javax.annotation-api</artifactId>
         <version>${javax-annotation.version}</version>
       </dependency>
+      <dependency>
+        <groupId>com.google.errorprone</groupId>
+        <artifactId>error_prone_annotations</artifactId>
+        <version>${error-prone-annotations.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-generator</artifactId>
+        <version>${jsonschema-generator.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-module-jackson</artifactId>
+        <version>${jsonschema-generator.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.github.victools</groupId>
+        <artifactId>jsonschema-module-swagger-2</artifactId>
+        <version>${jsonschema-generator.version}</version>
+      </dependency>
     </dependencies>
   </dependencyManagement>
 
@@ -126,8 +149,23 @@
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>${maven-jar.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-resources-plugin</artifactId>
+          <version>${maven-resources.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-site-plugin</artifactId>
           <version>${maven-site.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>${maven-surefire.version}</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -154,7 +192,7 @@
               </googleJavaFormat>
             </java>
             <pom>
-              <sortPom />
+              <sortPom/>
             </pom>
           </configuration>
         </plugin>
@@ -188,10 +226,10 @@
             </execution>
             <execution>
               <id>check</id>
-              <phase>verify</phase>
               <goals>
                 <goal>check</goal>
               </goals>
+              <phase>verify</phase>
               <configuration>
                 <rules>
                   <rule>
@@ -227,8 +265,8 @@
                   <requireMavenVersion>
                     <version>[3.9.0,)</version>
                   </requireMavenVersion>
-                  <dependencyConvergence />
-                  <requirePluginVersions />
+                  <dependencyConvergence/>
+                  <requirePluginVersions/>
                 </rules>
               </configuration>
             </execution>

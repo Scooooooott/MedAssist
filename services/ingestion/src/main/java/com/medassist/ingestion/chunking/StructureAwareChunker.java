@@ -41,7 +41,11 @@ public final class StructureAwareChunker implements Chunker {
     for (final TableBlock table : ir.tables()) {
       appendTableChunks(chunks, documentVersionId, documentTitle, table, options);
     }
-    LOGGER.info("chunk_stats documentVersionId={} chunks={} totalTokens={}", documentVersionId, chunks.size(), chunks.stream().mapToInt(Chunk::tokenCount).sum());
+    LOGGER.info(
+        "chunk_stats documentVersionId={} chunks={} totalTokens={}",
+        documentVersionId,
+        chunks.size(),
+        chunks.stream().mapToInt(Chunk::tokenCount).sum());
     return chunks;
   }
 
@@ -58,14 +62,20 @@ public final class StructureAwareChunker implements Chunker {
     }
 
     final String prefix = String.join(" > ", prependTitle(documentTitle, breadcrumb));
-    final String text = prefix.isBlank() ? section.text() : prefix + System.lineSeparator() + section.text();
+    final String text =
+        prefix.isBlank() ? section.text() : prefix + System.lineSeparator() + section.text();
     final int tokenCount = tokenCounter.count(text);
     if (tokenCount <= options.maxTokens()) {
-      chunks.add(createChunk(documentVersionId, chunks.size(), section.path(), text, section.sourceRange()));
+      chunks.add(
+          createChunk(
+              documentVersionId, chunks.size(), section.path(), text, section.sourceRange()));
     } else {
-      for (final TextPart part : splitBySentence(section.text(), section.sourceRange(), prefix, options)) {
-        final String partText = prefix.isBlank() ? part.text() : prefix + System.lineSeparator() + part.text();
-        chunks.add(createChunk(documentVersionId, chunks.size(), section.path(), partText, part.range()));
+      for (final TextPart part :
+          splitBySentence(section.text(), section.sourceRange(), prefix, options)) {
+        final String partText =
+            prefix.isBlank() ? part.text() : prefix + System.lineSeparator() + part.text();
+        chunks.add(
+            createChunk(documentVersionId, chunks.size(), section.path(), partText, part.range()));
       }
     }
 
@@ -89,43 +99,81 @@ public final class StructureAwareChunker implements Chunker {
       final String documentTitle,
       final TableBlock table,
       final ChunkingOptions options) {
-    final String title = documentTitle == null || documentTitle.isBlank() ? "" : documentTitle + System.lineSeparator();
-    final String caption = table.caption().isBlank() ? "" : table.caption() + System.lineSeparator();
+    final String title =
+        documentTitle == null || documentTitle.isBlank()
+            ? ""
+            : documentTitle + System.lineSeparator();
+    final String caption =
+        table.caption().isBlank() ? "" : table.caption() + System.lineSeparator();
     if (!table.linearizedText().isBlank() || table.rows().isEmpty()) {
-      final String text = title + caption + (table.linearizedText().isBlank() ? toMarkdown(table) : table.linearizedText());
+      final String text =
+          title
+              + caption
+              + (table.linearizedText().isBlank() ? toMarkdown(table) : table.linearizedText());
       if (tokenCounter.count(text) > options.maxTokens()) {
         throw new UnchunkableContentException("linearized table exceeds maxTokens");
       }
-      chunks.add(createChunk(documentVersionId, chunks.size(), table.sectionPath(), text, table.sourceRange()));
+      chunks.add(
+          createChunk(
+              documentVersionId, chunks.size(), table.sectionPath(), text, table.sourceRange()));
       return;
     }
     final String header = markdownHeader(table);
     final List<String> currentRows = new ArrayList<>();
     for (final Map<String, String> row : table.rows()) {
       final String rowText = markdownRow(table, row);
-      final String candidate = title + caption + header + System.lineSeparator() + String.join(System.lineSeparator(), append(currentRows, rowText));
+      final String candidate =
+          title
+              + caption
+              + header
+              + System.lineSeparator()
+              + String.join(System.lineSeparator(), append(currentRows, rowText));
       if (!currentRows.isEmpty() && tokenCounter.count(candidate) > options.maxTokens()) {
-        chunks.add(createChunk(documentVersionId, chunks.size(), table.sectionPath(), title + caption + header + System.lineSeparator() + String.join(System.lineSeparator(), currentRows), table.sourceRange()));
+        chunks.add(
+            createChunk(
+                documentVersionId,
+                chunks.size(),
+                table.sectionPath(),
+                title
+                    + caption
+                    + header
+                    + System.lineSeparator()
+                    + String.join(System.lineSeparator(), currentRows),
+                table.sourceRange()));
         currentRows.clear();
       }
-      if (tokenCounter.count(title + caption + header + System.lineSeparator() + rowText) > options.maxTokens()) {
+      if (tokenCounter.count(title + caption + header + System.lineSeparator() + rowText)
+          > options.maxTokens()) {
         throw new UnchunkableContentException("single table row exceeds maxTokens");
       }
       currentRows.add(rowText);
     }
     if (!currentRows.isEmpty()) {
-      chunks.add(createChunk(documentVersionId, chunks.size(), table.sectionPath(), title + caption + header + System.lineSeparator() + String.join(System.lineSeparator(), currentRows), table.sourceRange()));
+      chunks.add(
+          createChunk(
+              documentVersionId,
+              chunks.size(),
+              table.sectionPath(),
+              title
+                  + caption
+                  + header
+                  + System.lineSeparator()
+                  + String.join(System.lineSeparator(), currentRows),
+              table.sourceRange()));
     }
   }
 
   private String markdownHeader(final TableBlock table) {
     final String header = "| " + String.join(" | ", table.headers()) + " |";
-    final String separator = "| " + String.join(" | ", table.headers().stream().map(column -> "---").toList()) + " |";
+    final String separator =
+        "| " + String.join(" | ", table.headers().stream().map(column -> "---").toList()) + " |";
     return header + System.lineSeparator() + separator;
   }
 
   private String markdownRow(final TableBlock table, final Map<String, String> row) {
-    return "| " + String.join(" | ", table.headers().stream().map(h -> row.getOrDefault(h, "")).toList()) + " |";
+    return "| "
+        + String.join(" | ", table.headers().stream().map(h -> row.getOrDefault(h, "")).toList())
+        + " |";
   }
 
   private List<String> append(final List<String> values, final String value) {
@@ -140,12 +188,17 @@ public final class StructureAwareChunker implements Chunker {
         "| " + String.join(" | ", table.headers().stream().map(column -> "---").toList()) + " |";
     final List<String> rows = new ArrayList<>();
     for (final Map<String, String> row : table.rows()) {
-      rows.add("| " + String.join(" | ", table.headers().stream().map(h -> row.getOrDefault(h, "")).toList()) + " |");
+      rows.add(
+          "| "
+              + String.join(
+                  " | ", table.headers().stream().map(h -> row.getOrDefault(h, "")).toList())
+              + " |");
     }
     return String.join(System.lineSeparator(), prepend(header, separator, rows));
   }
 
-  private List<String> prepend(final String header, final String separator, final List<String> rows) {
+  private List<String> prepend(
+      final String header, final String separator, final List<String> rows) {
     final List<String> lines = new ArrayList<>();
     lines.add(header);
     lines.add(separator);

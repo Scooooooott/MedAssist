@@ -4,7 +4,7 @@ MedAssist is a healthcare-oriented retrieval augmented generation system for dem
 
 ## Current Milestone
 
-The repository is being built from M0 upward. M0 establishes the engineering foundation: Maven modules, cross-service contracts, local infrastructure, quality gates, ADRs, data-source licensing, and architecture documentation.
+The repository is being built from M0 upward. M0 establishes the engineering foundation; current work is completing the M1 baseline across parser, de-identification, model, ingestion, retrieval, answer generation, evaluation, and the React frontend.
 
 ## Service Ports
 
@@ -26,12 +26,16 @@ The repository is being built from M0 upward. M0 establishes the engineering fou
 Use `just --list` to inspect the task entrypoints.
 
 ```bash
+just bootstrap
 just build
 just test
 just lint
 just up
 just down
+just fetch-data-manifest
 ```
+
+`just fetch-data` is intentionally fail-closed until the full reviewed download and normalization workflow is implemented. Use `just fetch-data-manifest` for the current local directory scaffold.
 
 ## Safety Boundaries
 

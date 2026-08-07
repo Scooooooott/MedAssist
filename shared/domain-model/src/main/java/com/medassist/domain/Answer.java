@@ -4,7 +4,11 @@ import java.util.List;
 import java.util.Objects;
 
 public record Answer(
-    String text, List<Citation> citations, double confidence, boolean abstained, String abstainReason) {
+    String text,
+    List<Citation> citations,
+    double confidence,
+    boolean abstained,
+    String abstainReason) {
   public Answer {
     Objects.requireNonNull(text, "text");
     citations = List.copyOf(citations);

@@ -23,4 +23,9 @@ document text.
 
 ## Concurrency Model
 
-The service uses a synchronous gRPC server with an explicitly configured worker pool and maximum concurrent RPC count. Current values remain conservative placeholders. Final tuning belongs to M5.11 after parser workload measurements are available.
+The service runs as a single process with a synchronous gRPC server. It does not
+use asyncio for request handling. Worker threads and maximum concurrent RPCs
+are configured through the shared `MEDASSIST_GRPC_WORKERS` and
+`MEDASSIST_GRPC_MAX_CONCURRENT_RPCS` settings. Current values remain
+conservative placeholders. Final tuning belongs to M5.11 after parser workload
+measurements are available.

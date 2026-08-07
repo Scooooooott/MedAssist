@@ -118,6 +118,11 @@ public class JdbcVectorSearchRepository implements VectorSearchRepository {
     if (vector.isEmpty()) {
       throw new IllegalArgumentException("embedding vector must not be empty");
     }
-    return "[" + vector.stream().map(String::valueOf).reduce((left, right) -> left + "," + right).orElseThrow() + "]";
+    return "["
+        + vector.stream()
+            .map(String::valueOf)
+            .reduce((left, right) -> left + "," + right)
+            .orElseThrow()
+        + "]";
   }
 }

@@ -21,7 +21,8 @@ public class RetrievalResponseMapper {
         outcome.query().distanceMetric(),
         toDto(outcome.query().filters()),
         outcome.chunks().stream().map(this::toDto).toList(),
-        new TimingBreakdownDto(outcome.embeddingMs(), outcome.retrievalMs(), 0L, outcome.retrievalMs()),
+        new TimingBreakdownDto(
+            outcome.embeddingMs(), outcome.retrievalMs(), 0L, outcome.retrievalMs()),
         Instant.now());
   }
 
