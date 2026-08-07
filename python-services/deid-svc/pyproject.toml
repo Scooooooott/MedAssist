@@ -6,7 +6,9 @@ dependencies = [
   "medassist-common",
   "grpcio==1.73.1",
   "grpcio-health-checking==1.73.1",
+  "presidio-analyzer>=2.2.356,<3",
   "pydantic-settings==2.10.1",
+  "spacy>=3.8,<4",
 ]
 
 [build-system]

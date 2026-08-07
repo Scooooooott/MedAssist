@@ -38,6 +38,10 @@
     <google-java-format.version>1.27.0</google-java-format.version>
     <jacoco.version>0.8.12</jacoco.version>
     <maven-enforcer.version>3.5.0</maven-enforcer.version>
+    <maven-clean.version>3.3.2</maven-clean.version>
+    <maven-deploy.version>3.1.4</maven-deploy.version>
+    <maven-install.version>3.1.4</maven-install.version>
+    <maven-site.version>3.12.1</maven-site.version>
     <protobuf.version>4.29.3</protobuf.version>
     <grpc.version>1.69.0</grpc.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
@@ -105,6 +109,26 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-clean-plugin</artifactId>
+          <version>${maven-clean.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-deploy-plugin</artifactId>
+          <version>${maven-deploy.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-install-plugin</artifactId>
+          <version>${maven-install.version}</version>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-site-plugin</artifactId>
+          <version>${maven-site.version}</version>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>

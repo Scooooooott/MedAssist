@@ -2,17 +2,17 @@ syntax = "proto3";
 
 package medassist.contracts.v1;
 
-import "common.proto";
+import "medassist/contracts/v1/common.proto";
 
 option java_multiple_files = true;
 option java_package = "com.medassist.contracts.v1";
 option java_outer_classname = "ParserProto";
 
 service ParserService {
-  rpc ParseDocument(ParseRequest) returns (ParseResponse);
+  rpc ParseDocument(ParseDocumentRequest) returns (ParseDocumentResponse);
 }
 
-message ParseRequest {
+message ParseDocumentRequest {
   RequestMetadata metadata = 1;
   string storage_uri = 2;
   string mime_type = 3;
@@ -20,7 +20,7 @@ message ParseRequest {
   map<string, string> options = 5;
 }
 
-message ParseResponse {
+message ParseDocumentResponse {
   DocumentIR ir = 1;
   ParseStatus parse_status = 2;
   repeated string warnings = 3;

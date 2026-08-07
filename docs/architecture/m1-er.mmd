@@ -1,0 +1,47 @@
+erDiagram
+  document ||--o{ document_version : has
+  document_version ||--o{ chunk : contains
+  chunk ||--o{ chunk_embedding : embeds
+  ingestion_run ||--o{ ingestion_item : records
+  document ||--o{ quarantine : may_quarantine
+  document_version ||--o{ phi_detection_log : summarizes
+
+  document {
+    uuid id PK
+    text source_system
+    text source_uri
+    text doc_type
+    text publisher
+    text title
+  }
+
+  document_version {
+    uuid id PK
+    uuid document_id FK
+    text version
+    text content_hash
+    date effective_date
+    text status
+    text storage_uri
+    text content_domain
+  }
+
+  chunk {
+    uuid id PK
+    uuid document_version_id FK
+    int ordinal
+    text section_path
+    text text
+    int token_count
+    text content_domain
+    bigint source_char_start
+    bigint source_char_end
+    text phi_scan_status
+  }
+
+  chunk_embedding {
+    uuid chunk_id FK
+    text model_name
+    text model_version
+    vector embedding
+  }

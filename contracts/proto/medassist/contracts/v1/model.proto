@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package medassist.contracts.v1;
 
-import "common.proto";
+import "medassist/contracts/v1/common.proto";
 
 option java_multiple_files = true;
 option java_package = "com.medassist.contracts.v1";

@@ -1,8 +1,21 @@
 spring:
   application:
     name: ingestion
+  batch:
+    job:
+      enabled: false
+    jdbc:
+      initialize-schema: always
+  flyway:
+    enabled: true
 server:
   port: 8082
+medassist:
+  chunking:
+    target-tokens: 512
+    max-tokens: 1024
+    min-tokens: 100
+    overlap-tokens: 50
 logging:
   pattern:
     level: "%5p [trace_id=%X{trace_id:-}]"

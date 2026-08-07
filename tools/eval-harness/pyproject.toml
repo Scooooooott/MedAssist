@@ -1,0 +1,26 @@
+[project]
+name = "eval-harness"
+version = "0.1.0"
+requires-python = "==3.12.*"
+dependencies = []
+
+[build-system]
+requires = ["hatchling==1.27.0"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/eval_harness"]
+
+[project.scripts]
+medassist-eval = "eval_harness.cli:main"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "ANN"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true

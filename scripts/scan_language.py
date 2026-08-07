@@ -10,7 +10,10 @@ CJK_RE = re.compile(r"[\u3400-\u9fff]")
 INCLUDED_SUFFIXES = {".java", ".py", ".md", ".yml", ".yaml", ".toml"}
 EXCLUDED_PARTS = {
     ".git",
+    ".tools",
     ".venv",
+    ".pytest_cache",
+    ".mypy_cache",
     "target",
     "__pycache__",
     "data",
@@ -27,6 +30,7 @@ def is_excluded(path: Path) -> bool:
 
 
 def main() -> int:
+    sys.stdout.reconfigure(encoding="utf-8")
     violations: list[tuple[Path, int, str]] = []
     for path in ROOT.rglob("*"):
         if not path.is_file() or path.suffix not in INCLUDED_SUFFIXES or is_excluded(path):

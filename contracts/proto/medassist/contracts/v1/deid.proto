@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package medassist.contracts.v1;
 
-import "common.proto";
+import "medassist/contracts/v1/common.proto";
 
 option java_multiple_files = true;
 option java_package = "com.medassist.contracts.v1";
@@ -41,8 +41,8 @@ message AnonymizeResponse {
 
 enum DeidPolicy {
   DEID_POLICY_UNSPECIFIED = 0;
-  SAFE_HARBOR_SURROGATE = 1;
-  SAFE_HARBOR_REDACT = 2;
+  DEID_POLICY_SAFE_HARBOR_SURROGATE = 1;
+  DEID_POLICY_SAFE_HARBOR_REDACT = 2;
 }
 
 message PhiEntity {

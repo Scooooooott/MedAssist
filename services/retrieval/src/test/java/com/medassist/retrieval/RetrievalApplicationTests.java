@@ -3,7 +3,7 @@ package com.medassist.retrieval;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.ai.openai.api-key=test-only-key")
 class RetrievalApplicationTests {
   @Test
   void contextLoads() {}
