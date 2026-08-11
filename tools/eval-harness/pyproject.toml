@@ -13,6 +13,8 @@ packages = ["src/eval_harness"]
 
 [project.scripts]
 medassist-eval = "eval_harness.cli:main"
+medassist-eval-validate = "eval_harness.validate_cli:main"
+medassist-eval-thresholds = "eval_harness.thresholds_cli:main"
 
 [tool.ruff]
 target-version = "py312"
@@ -24,3 +26,10 @@ select = ["E", "F", "I", "N", "UP", "B", "ANN"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
+
+[dependency-groups]
+dev = [
+  "mypy==1.17.1",
+  "pytest==8.4.1",
+  "ruff==0.12.7",
+]

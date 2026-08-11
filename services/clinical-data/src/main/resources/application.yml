@@ -3,6 +3,19 @@ spring:
     name: clinical-data
 server:
   port: 8083
+clinical-data:
+  import:
+    require-profile: true
+    profile-base-url: "https://medassist.example/fhir/StructureDefinition/"
+  query:
+    k-anonymity: 5
+    statement-timeout-ms: 5000
+    max-rows: 100
+    fail-closed: true
+    allowed-views:
+      - clinical_research_condition_counts
+      - clinical_research_observation_counts
+      - clinical_research_encounter_counts
 logging:
   pattern:
     level: "%5p [trace_id=%X{trace_id:-}]"

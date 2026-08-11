@@ -29,3 +29,19 @@ are configured through the shared `MEDASSIST_GRPC_WORKERS` and
 `MEDASSIST_GRPC_MAX_CONCURRENT_RPCS` settings. Current values remain
 conservative placeholders. Final tuning belongs to M5.11 after parser workload
 measurements are available.
+
+## Production acceptance
+
+Run the parser-svc acceptance gate from this directory:
+
+```powershell
+uv run ruff check src tests
+uv run mypy src tests
+uv run pytest -q --cov=parser_svc --cov-report=term-missing --cov-fail-under=70
+```
+
+Status: the synthetic contract and failure-path suite is measured by these
+commands and must pass before deployment. A real 50-page PDF performance run
+(``< 60 seconds``) is **NOT MEASURED** in this repository state; run it only
+with approved non-PHI documents after installing the optional Docling backend:
+`uv sync --extra docling`.

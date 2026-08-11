@@ -11,6 +11,22 @@
   <name>MedAssist Clinical Data</name>
   <dependencies>
     <dependency>
+      <groupId>ca.uhn.hapi.fhir</groupId>
+      <artifactId>hapi-fhir-structures-r4</artifactId>
+      <version>7.6.0</version>
+      <exclusions>
+        <exclusion>
+          <groupId>ca.uhn.hapi.fhir</groupId>
+          <artifactId>hapi-fhir-base</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <dependency>
+      <groupId>ca.uhn.hapi.fhir</groupId>
+      <artifactId>hapi-fhir-base</artifactId>
+      <version>7.6.0</version>
+    </dependency>
+    <dependency>
       <groupId>com.medassist</groupId>
       <artifactId>common-lib</artifactId>
       <version>${project.version}</version>
@@ -22,6 +38,10 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-web</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework</groupId>
+      <artifactId>spring-jdbc</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>

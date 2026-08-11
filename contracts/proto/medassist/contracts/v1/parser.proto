@@ -54,6 +54,8 @@ message TableBlock {
   repeated string headers = 2;
   repeated TableRow rows = 3;
   SourceRange source_range = 4;
+  string section_path = 5;
+  string linearized_text = 6;
 }
 
 message TableRow {

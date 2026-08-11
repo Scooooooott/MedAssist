@@ -28,4 +28,18 @@ Use Spring AI `2.0.0` with a BOM pinned in the parent POM. Use Spring Boot `4.0.
 
 ## Consequences
 
-Spring AI APIs still need revalidation before M3 advisor and MCP work. M0 pins the version, and future API shape decisions must be recorded before implementation.
+The M3 API probe against the locally resolved `2.0.0` artifacts confirmed the
+following Java entry points:
+
+- `ChatClient` and `ChatClient.Builder` are available from
+  `spring-ai-client-chat`.
+- `CallAdvisor`, `ToolAdvisor`, and the advisor chain APIs are available under
+  `org.springframework.ai.chat.client.advisor.api`.
+- The Chat Memory starter is available, but persistence and PHI retention
+  policy remain application-owned decisions.
+
+M3 therefore uses Spring AI only at the provider-neutral LLM boundary and
+implements the workflow as a typed, explicit state machine. LangGraph4j is not
+introduced in M3 because its compatibility, checkpoint semantics, and
+maintenance cost were not validated for this pinned stack. MCP remains an
+explicitly isolated adapter rather than a replacement for the state machine.

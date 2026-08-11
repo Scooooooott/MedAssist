@@ -1,0 +1,4 @@
+# Explicit M1 control profile. The base application keeps the M2 HYBRID default.
+medassist:
+  retrieval:
+    default-retrieval-mode: VECTOR_ONLY

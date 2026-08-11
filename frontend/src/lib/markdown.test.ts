@@ -10,4 +10,15 @@ describe("stabilizePartialMarkdown", () => {
   it("leaves complete markdown unchanged", () => {
     expect(stabilizePartialMarkdown("**Done**")).toBe("**Done**");
   });
+
+  it("balances partial emphasis without disturbing list syntax", () => {
+    const markdown = stabilizePartialMarkdown("- **Aspir");
+    expect(markdown).toBe("- **Aspir**");
+  });
+
+  it("keeps a partial ordered list stable", () => {
+    expect(stabilizePartialMarkdown("1. Review the evidence\n2.")).toContain(
+      "1. Review the evidence\n2."
+    );
+  });
 });

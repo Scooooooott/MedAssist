@@ -4,7 +4,13 @@ import logging
 import os
 
 from medassist_common import configure_generated_proto_path, configure_logging, serve_health
-from deid_svc.core import FailClosedDeidentifier, RegexDeidentifier, build_production_deidentifier
+
+from deid_svc.core import (
+    Deidentifier,
+    FailClosedDeidentifier,
+    RegexDeidentifier,
+    build_production_deidentifier,
+)
 from deid_svc.grpc_service import DeidService, deid_pb2_grpc
 from deid_svc.settings import DeidSettings
 
@@ -13,7 +19,7 @@ configure_generated_proto_path()
 LOGGER = logging.getLogger(__name__)
 
 
-def build_backend(settings: DeidSettings):
+def build_backend(settings: DeidSettings) -> Deidentifier:
     """Build production Presidio or an explicitly selected test backend.
 
     Initialization failures intentionally leave the process alive but NOT_SERVING so

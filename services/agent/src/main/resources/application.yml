@@ -3,6 +3,17 @@ spring:
     name: agent
 server:
   port: 8085
+agent:
+  execution:
+    parallelism: ${MEDASSIST_AGENT_TOOL_PARALLELISM:8}
+  chat-memory:
+    max-messages: ${MEDASSIST_AGENT_CHAT_MEMORY_MAX_MESSAGES:10}
+    max-characters: ${MEDASSIST_AGENT_CHAT_MEMORY_MAX_CHARACTERS:16000}
+  deid:
+    enabled: ${MEDASSIST_AGENT_DEID_ENABLED:true}
+    endpoint: "${MEDASSIST_DEID_ENDPOINT:localhost:9002}"
+    timeout: 5s
+    policy: SAFE_HARBOR_SURROGATE
 logging:
   pattern:
     level: "%5p [trace_id=%X{trace_id:-}]"

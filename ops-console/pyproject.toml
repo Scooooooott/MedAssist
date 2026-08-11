@@ -1,0 +1,13 @@
+[project]
+name = "medassist-ops-console"
+version = "0.1.0"
+description = "Internal read-only review console for MedAssist"
+requires-python = ">=3.12"
+dependencies = ["Django>=5.2,<6"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100

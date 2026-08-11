@@ -37,7 +37,7 @@ public final class GrpcQueryEmbeddingClient implements QueryEmbeddingClient, Aut
           "model service returned an error: " + response.getError().getCode());
     }
     if (!modelVersion.equals(response.getModelVersion())) {
-      throw new IllegalStateException(
+      throw new ModelVersionMismatchException(
           "model service returned version "
               + response.getModelVersion()
               + " instead of "

@@ -1,9 +1,8 @@
 import pytest
-
 from deid_svc.core import (
     DeidError,
-    DeidUnavailableError,
     DeidInitializationError,
+    DeidUnavailableError,
     FailClosedDeidentifier,
     PhiEntity,
     PresidioDeidentifier,
@@ -60,7 +59,7 @@ class FakeAnalyzer:
     def __init__(self, fail: bool = False) -> None:
         self.fail = fail
 
-    def analyze(self, text: str, language: str):
+    def analyze(self, text: str, language: str) -> list[FakeResult]:
         if self.fail:
             raise RuntimeError("fake failure")
         return [FakeResult()]

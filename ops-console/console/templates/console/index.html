@@ -1,0 +1,8 @@
+{% extends "console/base.html" %}
+{% block content %}
+<h1>Review queues</h1>
+<ul>
+  {% for key, label in queues %}<li><a href="{% url 'queue-list' queue_name=key %}">{{ label }}</a></li>{% endfor %}
+</ul>
+<p>Business data is read-only here. State changes are delegated to the Java governance API.</p>
+{% endblock %}

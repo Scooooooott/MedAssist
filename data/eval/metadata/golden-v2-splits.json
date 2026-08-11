@@ -1,0 +1,69 @@
+{
+  "eval_set_version": "golden-v2",
+  "expected_total": 300,
+  "split_counts": {
+    "dev": 210,
+    "holdout": 90
+  },
+  "category_targets": {
+    "guideline_fact": 120,
+    "clinical_record": 60,
+    "structured_aggregation": 45,
+    "no_answer": 45,
+    "adversarial": 30
+  },
+  "holdout_subsets": [
+    {
+      "version": "holdout-v1",
+      "milestone": "M1",
+      "status": "available",
+      "consumption_count": 0,
+      "record_ids": [
+        "golden-v2-0141", "golden-v2-0142", "golden-v2-0143", "golden-v2-0144",
+        "golden-v2-0145", "golden-v2-0146", "golden-v2-0147", "golden-v2-0148",
+        "golden-v2-0149", "golden-v2-0150", "golden-v2-0151", "golden-v2-0152",
+        "golden-v2-0153", "golden-v2-0154", "golden-v2-0155", "golden-v2-0156",
+        "golden-v2-0157", "golden-v2-0158", "golden-v2-0159", "golden-v2-0160",
+        "golden-v2-0161", "golden-v2-0162", "golden-v2-0163", "golden-v2-0164",
+        "golden-v2-0165", "golden-v2-0166", "golden-v2-0167", "golden-v2-0168",
+        "golden-v2-0169", "golden-v2-0170", "golden-v2-0171", "golden-v2-0172",
+        "golden-v2-0173", "golden-v2-0174", "golden-v2-0175", "golden-v2-0176",
+        "golden-v2-0177", "golden-v2-0178", "golden-v2-0179", "golden-v2-0180",
+        "golden-v2-0181", "golden-v2-0182", "golden-v2-0183", "golden-v2-0184",
+        "golden-v2-0185", "golden-v2-0186", "golden-v2-0187", "golden-v2-0188",
+        "golden-v2-0189", "golden-v2-0190", "golden-v2-0191", "golden-v2-0192",
+        "golden-v2-0193", "golden-v2-0194", "golden-v2-0195", "golden-v2-0196",
+        "golden-v2-0197", "golden-v2-0198", "golden-v2-0199", "golden-v2-0200"
+      ]
+    },
+    {
+      "version": "holdout-v2",
+      "milestone": "M2",
+      "status": "reserved",
+      "consumption_count": 0,
+      "record_ids": [
+        "golden-v2-0271", "golden-v2-0272", "golden-v2-0273", "golden-v2-0274",
+        "golden-v2-0275", "golden-v2-0276", "golden-v2-0277", "golden-v2-0278",
+        "golden-v2-0279", "golden-v2-0280", "golden-v2-0281", "golden-v2-0282",
+        "golden-v2-0283", "golden-v2-0284", "golden-v2-0285"
+      ]
+    },
+    {
+      "version": "holdout-v3",
+      "milestone": "M3",
+      "status": "reserved",
+      "consumption_count": 0,
+      "record_ids": [
+        "golden-v2-0286", "golden-v2-0287", "golden-v2-0288", "golden-v2-0289",
+        "golden-v2-0290", "golden-v2-0291", "golden-v2-0292", "golden-v2-0293",
+        "golden-v2-0294", "golden-v2-0295", "golden-v2-0296", "golden-v2-0297",
+        "golden-v2-0298", "golden-v2-0299", "golden-v2-0300"
+      ]
+    }
+  ],
+  "dev_id_ranges": [
+    {"start": "golden-v2-0001", "end": "golden-v2-0140"},
+    {"start": "golden-v2-0201", "end": "golden-v2-0270"}
+  ],
+  "discipline": "Holdout records are milestone-only and become consumed after one archived run."
+}

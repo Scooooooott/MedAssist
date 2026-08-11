@@ -1,6 +1,6 @@
 import type { AnswerResponse, RetrievalResult } from "./types";
 
-export function makeResult(index = 0): RetrievalResult {
+export function makeResult(index = 0, overrides: Partial<RetrievalResult> = {}): RetrievalResult {
   return {
     chunkId: `chunk-${index}`,
     documentVersionId: `version-${index}`,
@@ -18,7 +18,15 @@ export function makeResult(index = 0): RetrievalResult {
     sourceTitle: `Guideline ${index}`,
     version: "v1",
     effectiveDate: "2026-01-01",
-    metadata: {}
+    documentStatus: "ACTIVE",
+    stale: false,
+    vectorRank: index + 1,
+    lexicalRank: index + 2,
+    vectorScore: 0.9 - index * 0.001,
+    lexicalScore: 0.8 - index * 0.001,
+    fusedScore: 0.85 - index * 0.001,
+    metadata: {},
+    ...overrides
   };
 }
 
@@ -43,11 +51,11 @@ export function makeAnswer(overrides: Partial<AnswerResponse> = {}): AnswerRespo
     retrieval: {
       query: "Should eligible adults take aspirin?",
       results,
-      appliedFilters: { docTypes: ["GUIDELINE"], publishers: ["CDC"] },
+      filters: { docTypes: ["GUIDELINE"], publishers: ["CDC"] },
       modelName: "bge-m3",
       modelVersion: "m1",
       distanceMetric: "cosine",
-      retrievedAt: "2026-08-07T00:00:00Z"
+      generatedAt: "2026-08-07T00:00:00Z"
     },
     timing: {
       embeddingMs: 10,

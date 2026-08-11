@@ -31,31 +31,58 @@ public class JdbcVectorSearchRepository implements VectorSearchRepository {
     if (!"COSINE".equalsIgnoreCase(query.distanceMetric())) {
       throw new IllegalArgumentException("only COSINE distance is supported in M1");
     }
+    final String embeddingTable = embeddingTable(embedding.vector().size());
     final StringBuilder sql =
         new StringBuilder(
             """
             SELECT c.id AS chunk_id, c.document_version_id, c.ordinal, c.section_path,
                    c.text, c.token_count, c.source_char_start, c.source_char_end,
                    1 - (ce.embedding <=> CAST(:embedding AS vector)) AS score,
-                   d.doc_type, d.publisher, d.title, dv.version, dv.effective_date, c.metadata
-              FROM chunk_embedding ce
+                   d.doc_type, d.publisher, d.title, dv.version, dv.effective_date,
+                   dv.status AS document_status,
+                   CASE WHEN dv.effective_date IS NULL THEN false
+                        ELSE dv.effective_date < current_date - make_interval(years => :stalenessYears)
+                   END AS stale,
+                   c.metadata
+              FROM %s ce
               JOIN chunk c ON c.id = ce.chunk_id
               JOIN document_version dv ON dv.id = c.document_version_id
               JOIN document d ON d.id = dv.document_id
              WHERE ce.model_name = :modelName
                AND ce.model_version = :modelVersion
-               AND dv.status = 'ACTIVE'
+               AND dv.status <> 'WITHDRAWN'
                AND c.phi_scan_status = 'CLEAN'
-            """);
+               AND c.chunking_strategy_id = :chunkingStrategyId
+               AND ce.contextual_mode = :contextualMode
+            """
+                .formatted(embeddingTable));
     final MapSqlParameterSource params =
         new MapSqlParameterSource()
             .addValue("embedding", vectorLiteral(embedding.vector()))
             .addValue("modelName", query.modelName())
             .addValue("modelVersion", query.modelVersion())
-            .addValue("topK", query.topK());
+            .addValue("topK", query.candidateTopN())
+            .addValue("stalenessYears", query.stalenessYears())
+            .addValue("chunkingStrategyId", query.chunkingStrategyId())
+            .addValue("contextualMode", query.contextualRetrievalMode().name());
+    if (query.includeSuperseded()) {
+      sql.append(" AND dv.status IN ('ACTIVE', 'SUPERSEDED')");
+    } else {
+      sql.append(" AND dv.status = 'ACTIVE'");
+    }
     appendFilters(sql, params, query.filters());
     sql.append(" ORDER BY ce.embedding <=> CAST(:embedding AS vector) ASC LIMIT :topK");
     return jdbc.query(sql.toString(), params, this::mapRow);
+  }
+
+  private String embeddingTable(final int dimension) {
+    return switch (dimension) {
+      case 768 -> "chunk_embedding_768";
+      case 1024 -> "chunk_embedding";
+      case 1536 -> "chunk_embedding_1536";
+      default ->
+          throw new IllegalArgumentException("unsupported embedding dimension: " + dimension);
+    };
   }
 
   private void appendFilters(
@@ -100,6 +127,13 @@ public class JdbcVectorSearchRepository implements VectorSearchRepository {
         row.getString("title"),
         row.getString("version"),
         row.getObject("effective_date", LocalDate.class),
+        row.getString("document_status"),
+        row.getBoolean("stale"),
+        rowNumber + 1,
+        null,
+        row.getDouble("score"),
+        null,
+        row.getDouble("score"),
         parseMetadata(row.getString("metadata")));
   }
 

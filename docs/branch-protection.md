@@ -6,6 +6,8 @@ Protect `main` with the following required checks:
 - `python-build`
 - `contracts`
 - `integration`
+- `evaluation-tools`
+- `frontend`
 - `security`
 - `language`
 

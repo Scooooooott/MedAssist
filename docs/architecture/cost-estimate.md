@@ -57,3 +57,23 @@ Estimate:
 - M2.3 must estimate actual contextual retrieval cost before implementation.
 - M2.8 must update CI evaluation cost after fast-gate size is known.
 - M6.3 must replace infrastructure placeholders with real invoices or provider quotes.
+
+## M2.8 Review (2026-08-07)
+
+**Status: NOT MEASURED.** The PR tier is fixed at 30 dev records, but no real PR
+evaluation has run because the licensed golden set, configured generation model,
+and judge model are external prerequisites. The original 6,000-token and price
+figures above remain planning assumptions, not observed usage.
+
+The first real PR run must record prompt, completion, and total tokens plus the
+pinned judge price. Its cost is calculated as:
+
+```text
+(input_tokens / 1,000,000 * input_price_per_million)
++ (output_tokens / 1,000,000 * output_price_per_million)
+```
+
+The measured duration must also demonstrate the under-five-minute PR budget. If
+the observed cost is too high, reduce the dev-only quick subset or select a less
+expensive pinned judge; do not disable the gate. No value is backfilled here from
+unit-test duration or synthetic records.

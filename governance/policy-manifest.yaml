@@ -1,0 +1,569 @@
+version: "1.0.0"
+
+metadata:
+  name: medassist-governance
+  status: draft
+  evidence:
+    - services/ingestion/src/main/resources/db/migration/V1__m1_baseline_schema.sql
+    - services/ingestion/src/main/resources/db/migration/V2__m1_closeout_m2_foundation.sql
+    - services/ingestion/src/main/resources/db/migration/V3__m2_multi_dimension_embeddings.sql
+    - services/ingestion/src/main/resources/db/migration/V4__ingestion_durable_stage.sql
+    - services/ingestion/src/main/resources/db/migration/V6__m3_clinical_safe_harbor_import.sql
+  coverage:
+    verified_schema: M1/M2/M3 ingestion and clinical relations in the evidence migrations
+    unverified: M4 audit, feedback, dashboard, and Django business tables are not present in the verified migrations
+  notes:
+    - This manifest describes the repository schema evidence above, not a production database inspection.
+    - Future M4 relations must be added with migration evidence before they are treated as covered.
+
+default_policy:
+  decision: DENY
+  unknown_role: DENY
+  unknown_action: DENY
+  unknown_relation: DENY
+  unknown_label: DENY
+  missing_identity: DENY
+  direct_table_writes: DENY
+  ops_console_direct_writes: DENY
+  external_egress: DENY
+
+column_classifications:
+  labels:
+    PHI_DIRECT: Direct identifier or raw identifying value; never persisted by this schema evidence.
+    PHI_QUASI: Quasi-identifier or linkable clinical identifier requiring minimum necessary access.
+    CLINICAL_FIELD: Clinical or source-derived field that is not a direct identifier.
+    PUBLIC_FIELD: Safe operational, public metadata, aggregate, or de-identified field.
+
+content_domains:
+  labels:
+    CLINICAL: Clinical records and clinical aggregates.
+    POLICY: Public policy and guidance content.
+    DRUG_LABEL: Public drug-label content.
+    CASE_REPORT: De-identified case-report content.
+    PUBLIC: Public or de-identified general content and operational metadata.
+  row_mappings:
+    - relation: document
+      default: PUBLIC
+    - relation: document_version
+      default: PUBLIC
+      column: content_domain
+    - relation: chunk
+      default: PUBLIC
+      column: content_domain
+    - relation: chunk_embedding
+      default: PUBLIC
+    - relation: chunk_embedding_768
+      default: PUBLIC
+    - relation: chunk_embedding_1536
+      default: PUBLIC
+    - relation: chunk_context
+      default: PUBLIC
+    - relation: ingestion_run
+      default: PUBLIC
+    - relation: ingestion_item
+      default: PUBLIC
+    - relation: ingestion_stage
+      default: PUBLIC
+    - relation: quarantine
+      default: PUBLIC
+    - relation: phi_detection_log
+      default: PUBLIC
+    - relation: document_metadata_review
+      default: PUBLIC
+    - relation: chunk_phi_review
+      default: PUBLIC
+    - relation: evaluation_run
+      default: PUBLIC
+    - relation: holdout_consumption
+      default: PUBLIC
+    - relation: embedding_model_registry
+      default: PUBLIC
+    - relation: clinical_import_run
+      default: CLINICAL
+    - relation: clinical_patient
+      default: CLINICAL
+    - relation: clinical_encounter
+      default: CLINICAL
+    - relation: clinical_condition
+      default: CLINICAL
+    - relation: clinical_medication
+      default: CLINICAL
+    - relation: clinical_observation
+      default: CLINICAL
+    - relation: clinical_quarantine
+      default: CLINICAL
+    - relation: clinical_research_condition_counts
+      default: CLINICAL
+    - relation: clinical_research_observation_counts
+      default: CLINICAL
+    - relation: clinical_research_encounter_counts
+      default: CLINICAL
+
+roles:
+  - id: CLINICIAN
+    description: Authenticated clinical user with care-context access.
+    allowed_domains: [CLINICAL, POLICY, DRUG_LABEL, CASE_REPORT, PUBLIC]
+    obligations: [AUDIT, MINIMUM_NECESSARY]
+  - id: RESEARCHER
+    description: Authenticated research user limited to de-identified and aggregate results.
+    allowed_domains: [CLINICAL, POLICY, DRUG_LABEL, CASE_REPORT, PUBLIC]
+    aggregate_only_domains: [CLINICAL]
+    obligations: [AUDIT, K_ANONYMITY, AGGREGATE_ONLY]
+  - id: ADMIN
+    description: Internal governance operator; no implicit clinical disclosure.
+    allowed_domains: [POLICY, DRUG_LABEL, CASE_REPORT, PUBLIC]
+    obligations: [AUDIT, MINIMUM_NECESSARY, OPS_INTERNAL_ONLY]
+
+tables:
+  document:
+    source: M1/V1
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      source_system: {classification: PUBLIC_FIELD}
+      source_uri: {classification: PHI_QUASI}
+      doc_type: {classification: PUBLIC_FIELD}
+      publisher: {classification: PUBLIC_FIELD}
+      title: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+  document_version:
+    source: M1/V1+V2
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      document_id: {classification: PUBLIC_FIELD}
+      version: {classification: PUBLIC_FIELD}
+      content_hash: {classification: PUBLIC_FIELD}
+      effective_date: {classification: PUBLIC_FIELD}
+      retrieved_at: {classification: PUBLIC_FIELD}
+      status: {classification: PUBLIC_FIELD}
+      superseded_by: {classification: PUBLIC_FIELD}
+      storage_uri: {classification: PHI_QUASI}
+      content_domain: {classification: PUBLIC_FIELD}
+      metadata: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+  chunk:
+    source: M1/V1+V2
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      document_version_id: {classification: PUBLIC_FIELD}
+      ordinal: {classification: PUBLIC_FIELD}
+      section_path: {classification: PUBLIC_FIELD}
+      text: {classification: CLINICAL_FIELD}
+      token_count: {classification: PUBLIC_FIELD}
+      content_domain: {classification: PUBLIC_FIELD}
+      source_char_start: {classification: PUBLIC_FIELD}
+      source_char_end: {classification: PUBLIC_FIELD}
+      phi_scan_status: {classification: PUBLIC_FIELD}
+      phi_entity_types: {classification: PUBLIC_FIELD}
+      metadata: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+      context_prefix: {classification: CLINICAL_FIELD}
+      contextual_mode: {classification: PUBLIC_FIELD}
+      context_prompt_version: {classification: PUBLIC_FIELD}
+      chunking_strategy_id: {classification: PUBLIC_FIELD}
+      lexical_search: {classification: PUBLIC_FIELD}
+      lexical_search_unstemmed: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+  chunk_embedding:
+    source: M1/V1+V2
+    columns:
+      chunk_id: {classification: PUBLIC_FIELD}
+      model_name: {classification: PUBLIC_FIELD}
+      model_version: {classification: PUBLIC_FIELD}
+      embedding: {classification: CLINICAL_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+      contextual_mode: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+  chunk_embedding_768:
+    source: M2/V3
+    columns:
+      chunk_id: {classification: PUBLIC_FIELD}
+      model_name: {classification: PUBLIC_FIELD}
+      model_version: {classification: PUBLIC_FIELD}
+      contextual_mode: {classification: PUBLIC_FIELD}
+      embedding: {classification: CLINICAL_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+  chunk_embedding_1536:
+    source: M2/V3
+    columns:
+      chunk_id: {classification: PUBLIC_FIELD}
+      model_name: {classification: PUBLIC_FIELD}
+      model_version: {classification: PUBLIC_FIELD}
+      contextual_mode: {classification: PUBLIC_FIELD}
+      embedding: {classification: CLINICAL_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+  chunk_context:
+    source: M2/V2
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      document_version_id: {classification: PUBLIC_FIELD}
+      chunking_strategy_id: {classification: PUBLIC_FIELD}
+      chunk_ordinal: {classification: PUBLIC_FIELD}
+      mode: {classification: PUBLIC_FIELD}
+      prompt_version: {classification: PUBLIC_FIELD}
+      context_text: {classification: CLINICAL_FIELD}
+      input_tokens: {classification: PUBLIC_FIELD}
+      output_tokens: {classification: PUBLIC_FIELD}
+      estimated_cost_usd: {classification: PUBLIC_FIELD}
+      generation_status: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+  ingestion_run:
+    source: M1/V1
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      started_at: {classification: PUBLIC_FIELD}
+      finished_at: {classification: PUBLIC_FIELD}
+      status: {classification: PUBLIC_FIELD}
+      discovered_count: {classification: PUBLIC_FIELD}
+      parsed_count: {classification: PUBLIC_FIELD}
+      deidentified_count: {classification: PUBLIC_FIELD}
+      chunked_count: {classification: PUBLIC_FIELD}
+      embedded_count: {classification: PUBLIC_FIELD}
+      indexed_count: {classification: PUBLIC_FIELD}
+      skipped_count: {classification: PUBLIC_FIELD}
+      failed_count: {classification: PUBLIC_FIELD}
+      parameters: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT]}
+  ingestion_item:
+    source: M1/V1
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      ingestion_run_id: {classification: PUBLIC_FIELD}
+      document_id: {classification: PUBLIC_FIELD}
+      document_version_id: {classification: PUBLIC_FIELD}
+      source_uri: {classification: PHI_QUASI}
+      stage: {classification: PUBLIC_FIELD}
+      status: {classification: PUBLIC_FIELD}
+      duration_ms: {classification: PUBLIC_FIELD}
+      error_code: {classification: PUBLIC_FIELD}
+      error_message: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT]}
+  ingestion_stage:
+    source: M3/V4
+    columns:
+      ingestion_run_id: {classification: PUBLIC_FIELD}
+      logical_document_id: {classification: PUBLIC_FIELD}
+      document_version_id: {classification: PUBLIC_FIELD}
+      source_uri: {classification: PHI_QUASI}
+      source_id: {classification: PHI_QUASI}
+      mime_type: {classification: PUBLIC_FIELD}
+      size_bytes: {classification: PUBLIC_FIELD}
+      content_hash: {classification: PUBLIC_FIELD}
+      previous_content_hash: {classification: PUBLIC_FIELD}
+      classification: {classification: PUBLIC_FIELD}
+      object_metadata: {classification: PUBLIC_FIELD}
+      force_reprocess: {classification: PUBLIC_FIELD}
+      status: {classification: PUBLIC_FIELD}
+      deidentified_ir: {classification: CLINICAL_FIELD}
+      phi_type_counts: {classification: PUBLIC_FIELD}
+      policy_version: {classification: PUBLIC_FIELD}
+      processing_status: {classification: PUBLIC_FIELD}
+      indexing_result: {classification: CLINICAL_FIELD}
+      quarantine_stage: {classification: PUBLIC_FIELD}
+      error_code: {classification: PUBLIC_FIELD}
+      safe_reason: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+      updated_at: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT]}
+  quarantine:
+    source: M1/V1
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      document_id: {classification: PUBLIC_FIELD}
+      document_version_id: {classification: PUBLIC_FIELD}
+      source_uri: {classification: PHI_QUASI}
+      failure_stage: {classification: PUBLIC_FIELD}
+      failure_reason: {classification: PUBLIC_FIELD}
+      content_hash: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT]}
+  phi_detection_log:
+    source: M1/V1
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      document_version_id: {classification: PUBLIC_FIELD}
+      entity_type: {classification: PUBLIC_FIELD}
+      entity_count: {classification: PUBLIC_FIELD}
+      recognizer: {classification: PUBLIC_FIELD}
+      policy_version: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT]}
+  document_metadata_review:
+    source: M2/V2
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      document_version_id: {classification: PUBLIC_FIELD}
+      missing_fields: {classification: PUBLIC_FIELD}
+      status: {classification: PUBLIC_FIELD}
+      reason_code: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+      resolved_at: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT]}
+  chunk_phi_review:
+    source: M2/V2
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      chunk_id: {classification: PUBLIC_FIELD}
+      phi_scan_status: {classification: PUBLIC_FIELD}
+      phi_entity_types: {classification: PUBLIC_FIELD}
+      status: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+      resolved_at: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT]}
+  evaluation_run:
+    source: M2/V2
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      eval_set_version: {classification: PUBLIC_FIELD}
+      split: {classification: PUBLIC_FIELD}
+      code_commit: {classification: PUBLIC_FIELD}
+      model_name: {classification: PUBLIC_FIELD}
+      model_version: {classification: PUBLIC_FIELD}
+      judge_model: {classification: PUBLIC_FIELD}
+      random_seed: {classification: PUBLIC_FIELD}
+      metrics: {classification: PUBLIC_FIELD}
+      result_uri: {classification: PHI_QUASI}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT], RESEARCHER: [SELECT]}
+  holdout_consumption:
+    source: M2/V2
+    columns:
+      holdout_version: {classification: PUBLIC_FIELD}
+      eval_set_version: {classification: PUBLIC_FIELD}
+      status: {classification: PUBLIC_FIELD}
+      evaluation_run_id: {classification: PUBLIC_FIELD}
+      reserved_at: {classification: PUBLIC_FIELD}
+      consumed_at: {classification: PUBLIC_FIELD}
+      use_count: {classification: PUBLIC_FIELD}
+      reuse_bias_note: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT]}
+  embedding_model_registry:
+    source: M2/V3
+    columns:
+      model_name: {classification: PUBLIC_FIELD}
+      model_version: {classification: PUBLIC_FIELD}
+      dimension: {classification: PUBLIC_FIELD}
+      provider_type: {classification: PUBLIC_FIELD}
+      enabled: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT], RESEARCHER: [SELECT]}
+  clinical_import_run:
+    source: M3/V6
+    columns:
+      id: {classification: PUBLIC_FIELD}
+      source_id: {classification: PHI_QUASI}
+      status: {classification: PUBLIC_FIELD}
+      accepted_count: {classification: PUBLIC_FIELD}
+      quarantined_count: {classification: PUBLIC_FIELD}
+      started_at: {classification: PUBLIC_FIELD}
+      finished_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], ADMIN: [SELECT]}
+  clinical_patient:
+    source: M3/V6
+    columns:
+      source_id: {classification: PHI_QUASI}
+      resource_id: {classification: PHI_QUASI}
+      birth_year: {classification: PHI_QUASI}
+      age_band: {classification: PHI_QUASI}
+      gender: {classification: PHI_QUASI}
+      race: {classification: PHI_QUASI}
+      ethnicity: {classification: PHI_QUASI}
+      zip3: {classification: PHI_QUASI}
+      imported_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT]}
+  clinical_encounter:
+    source: M3/V6
+    columns:
+      source_id: {classification: PHI_QUASI}
+      resource_id: {classification: PHI_QUASI}
+      patient_id: {classification: PHI_QUASI}
+      type_system: {classification: CLINICAL_FIELD}
+      type_code: {classification: CLINICAL_FIELD}
+      type_display: {classification: CLINICAL_FIELD}
+      start_year: {classification: CLINICAL_FIELD}
+      end_year: {classification: CLINICAL_FIELD}
+      reason_system: {classification: CLINICAL_FIELD}
+      reason_code: {classification: CLINICAL_FIELD}
+      reason_display: {classification: CLINICAL_FIELD}
+      imported_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT]}
+  clinical_condition:
+    source: M3/V6
+    columns:
+      source_id: {classification: PHI_QUASI}
+      resource_id: {classification: PHI_QUASI}
+      patient_id: {classification: PHI_QUASI}
+      encounter_id: {classification: PHI_QUASI}
+      code_system: {classification: CLINICAL_FIELD}
+      code: {classification: CLINICAL_FIELD}
+      code_display: {classification: CLINICAL_FIELD}
+      display: {classification: CLINICAL_FIELD}
+      onset_year: {classification: CLINICAL_FIELD}
+      status: {classification: CLINICAL_FIELD}
+      imported_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT]}
+  clinical_medication:
+    source: M3/V6
+    columns:
+      source_id: {classification: PHI_QUASI}
+      resource_id: {classification: PHI_QUASI}
+      patient_id: {classification: PHI_QUASI}
+      encounter_id: {classification: PHI_QUASI}
+      code_system: {classification: CLINICAL_FIELD}
+      code: {classification: CLINICAL_FIELD}
+      code_display: {classification: CLINICAL_FIELD}
+      display: {classification: CLINICAL_FIELD}
+      start_year: {classification: CLINICAL_FIELD}
+      end_year: {classification: CLINICAL_FIELD}
+      status: {classification: CLINICAL_FIELD}
+      imported_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT]}
+  clinical_observation:
+    source: M3/V6
+    columns:
+      source_id: {classification: PHI_QUASI}
+      resource_id: {classification: PHI_QUASI}
+      patient_id: {classification: PHI_QUASI}
+      encounter_id: {classification: PHI_QUASI}
+      code_system: {classification: CLINICAL_FIELD}
+      code: {classification: CLINICAL_FIELD}
+      code_display: {classification: CLINICAL_FIELD}
+      display: {classification: CLINICAL_FIELD}
+      value: {classification: CLINICAL_FIELD}
+      unit: {classification: CLINICAL_FIELD}
+      observation_year: {classification: CLINICAL_FIELD}
+      imported_at: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT]}
+  clinical_quarantine:
+    source: M3/V6
+    columns:
+      source_id: {classification: PHI_QUASI}
+      resource_type: {classification: PUBLIC_FIELD}
+      resource_id: {classification: PHI_QUASI}
+      stage: {classification: PUBLIC_FIELD}
+      reason_code: {classification: PUBLIC_FIELD}
+      safe_reason: {classification: PUBLIC_FIELD}
+      created_at: {classification: PUBLIC_FIELD}
+    access: {ADMIN: [SELECT]}
+  clinical_research_condition_counts:
+    kind: view
+    source: M3/V6
+    columns:
+      code_system: {classification: CLINICAL_FIELD}
+      code: {classification: CLINICAL_FIELD}
+      status: {classification: CLINICAL_FIELD}
+      patient_count: {classification: PUBLIC_FIELD}
+      aggregate_count: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+  clinical_research_observation_counts:
+    kind: view
+    source: M3/V6
+    columns:
+      code_system: {classification: CLINICAL_FIELD}
+      code: {classification: CLINICAL_FIELD}
+      unit: {classification: CLINICAL_FIELD}
+      observation_year: {classification: CLINICAL_FIELD}
+      patient_count: {classification: PUBLIC_FIELD}
+      aggregate_count: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+  clinical_research_encounter_counts:
+    kind: view
+    source: M3/V6
+    columns:
+      type_system: {classification: CLINICAL_FIELD}
+      type_code: {classification: CLINICAL_FIELD}
+      start_year: {classification: CLINICAL_FIELD}
+      patient_count: {classification: PUBLIC_FIELD}
+      aggregate_count: {classification: PUBLIC_FIELD}
+    access: {CLINICIAN: [SELECT], RESEARCHER: [SELECT], ADMIN: [SELECT]}
+
+tools:
+  - id: policy_search
+    roles: [CLINICIAN, RESEARCHER, ADMIN]
+    domains: [POLICY, DRUG_LABEL, CASE_REPORT, PUBLIC]
+    query_classifications: [POLICY, MIXED]
+    aggregate_only: false
+  - id: clinical_search
+    roles: [CLINICIAN]
+    domains: [CLINICAL]
+    query_classifications: [CLINICAL, MIXED]
+    aggregate_only: false
+  - id: structured_query
+    roles: [CLINICIAN, RESEARCHER]
+    domains: [CLINICAL]
+    query_classifications: [STRUCTURED, MIXED]
+    aggregate_only: true
+
+dashboards:
+  - id: governance_metrics
+    roles: [ADMIN]
+    domains: [PUBLIC]
+    actions: [VIEW]
+  - id: retrieval_quality
+    roles: [ADMIN, RESEARCHER]
+    domains: [PUBLIC, POLICY]
+    actions: [VIEW]
+  - id: clinical_aggregates
+    roles: [CLINICIAN, RESEARCHER]
+    domains: [CLINICAL]
+    actions: [VIEW]
+
+ops_console:
+  enabled: true
+  roles: [ADMIN]
+  read_relations: [quarantine, ingestion_stage, document_metadata_review, chunk_phi_review, clinical_quarantine, evaluation_run, holdout_consumption]
+  direct_writes: false
+  state_changes_via: java-authorized-api
+  public_exposure: false
+
+egress:
+  default: DENY
+  destinations:
+    - id: LOCAL_MODEL
+      allowed: true
+      content_classes: [DEIDENTIFIED_QUERY, SAFE_CHUNK_METADATA, AGGREGATE_ONLY]
+    - id: EXTERNAL_LLM
+      allowed: false
+      content_classes: []
+  content_classes: [DEIDENTIFIED_QUERY, SAFE_CHUNK_METADATA, AGGREGATE_ONLY]
+  prohibited_sources: [RAW_USER_QUESTION, RAW_PHI, RAW_CHUNK_TEXT]
+
+application_permissions:
+  - id: answer.read
+    roles: [CLINICIAN, RESEARCHER, ADMIN]
+    domains: [POLICY, DRUG_LABEL, CASE_REPORT, PUBLIC]
+    decision: ALLOW
+  - id: clinical.search
+    roles: [CLINICIAN]
+    domains: [CLINICAL]
+    decision: ALLOW
+  - id: clinical.aggregate
+    roles: [CLINICIAN, RESEARCHER]
+    domains: [CLINICAL]
+    decision: ALLOW
+    obligations: [AUDIT, AGGREGATE_ONLY]
+  - id: ops.review
+    roles: [ADMIN]
+    domains: [PUBLIC]
+    decision: ALLOW
+    obligations: [AUDIT, OPS_INTERNAL_ONLY]
+  - id: business_table.write
+    roles: []
+    domains: []
+    decision: DENY
+
+drift:
+  schema_format: relation-columns-v1
+  fixtures:
+    - scripts/governance/fixtures/m1-m3-schema.json
+  exemptions:
+    - id: django-framework-tables
+      relation_pattern: django_*
+      column_pattern: "*"
+      reason: Django internal tables are owned by Django and are outside the Flyway business schema; no fixture claims them.
+      scope: relation-and-columns
+      expires: "2027-01-01"

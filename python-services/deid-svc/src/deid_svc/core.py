@@ -6,8 +6,7 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import date, timedelta
-from typing import Any, Protocol
-
+from typing import Any, Protocol, cast
 
 SAFE_HARBOR_SURROGATE = "SAFE_HARBOR_SURROGATE"
 SAFE_HARBOR_REDACT = "SAFE_HARBOR_REDACT"
@@ -76,6 +75,24 @@ class Deidentifier(Protocol):
         policy: str = DEFAULT_POLICY,
         document_key: str | None = None,
     ) -> DeidResult: ...
+
+
+class AnalyzerResult(Protocol):
+    entity_type: str
+    start: int
+    end: int
+    score: float
+    recognition_metadata: Mapping[str, object]
+
+
+class Analyzer(Protocol):
+    def analyze(self, text: str, language: str) -> Sequence[AnalyzerResult]: ...
+
+
+class ProductionDeidSettings(Protocol):
+    hmac_salt: str
+    presidio_model_name: str
+    presidio_model_version: str
 
 
 def _validate_policy(policy: str) -> str:
@@ -166,7 +183,7 @@ def _date_replacement(original: str, context_key: str | None, salt: bytes) -> st
     if context_key is None:
         # Without a patient/document key, retain only the Safe Harbor year.
         return f"{original_date.year:04d}"
-    digest = hmac.new(salt, f"date-shift:{context_key}".encode("utf-8"), hashlib.sha256).digest()
+    digest = hmac.new(salt, f"date-shift:{context_key}".encode(), hashlib.sha256).digest()
     shift = int.from_bytes(digest[:4], "big") % 731 - 365
     return _format_date(original_date + timedelta(days=shift), style)
 
@@ -221,7 +238,7 @@ def _anonymize_with_entities(
         else:
             digest = hmac.new(
                 salt,
-                f"{entity_type}:{original}".encode("utf-8"),
+                f"{entity_type}:{original}".encode(),
                 hashlib.sha256,
             ).hexdigest()[:16]
             replacement = f"{entity_type}_{digest}"
@@ -309,10 +326,10 @@ class RegexDeidentifier:
 class PresidioDeidentifier:
     """Production backend backed by Presidio Analyzer and its recognizer registry."""
 
-    def __init__(self, analyzer: Any, salt: str, model_name: str, model_version: str) -> None:
+    def __init__(self, analyzer: object, salt: str, model_name: str, model_version: str) -> None:
         if not salt:
             raise DeidInitializationError("HMAC salt is required")
-        self._analyzer = analyzer
+        self._analyzer = cast(Analyzer, analyzer)
         self._salt = salt.encode("utf-8")
         self._ready = False
         self.policy_version = f"presidio-safe-harbor-v2;{model_name}@{model_version}"
@@ -393,11 +410,26 @@ def _custom_recognizers() -> list[Any]:
     from presidio_analyzer import Pattern, PatternRecognizer
 
     patterns: dict[str, str] = {
-        "MRN": r"\b(?:MRN|MR#|Medical Record (?:Number|No)|Patient (?:ID|Number)|Pt\.?\s*ID)[:#\s-]*[A-Za-z0-9][A-Za-z0-9-]{3,}\b",
-        "ACCOUNT_NUMBER": r"\b(?:account|acct|FIN)\s*(?:number|no\.?|#)?\s*[:#-]?\s*[A-Za-z0-9-]{4,}\b",
-        "ENCOUNTER_ID": r"\b(?:encounter|visit|CSN)\s*(?:number|no\.?|#)?\s*[:#-]?\s*[A-Za-z0-9-]{4,}\b",
-        "FACILITY": r"\b(?:[A-Z][A-Za-z0-9&'/-]*\s+){0,6}(?:Hospital|Medical Center|Clinic|Health System|Healthcare)\b",
-        "DEVICE_ID": r"\b(?:device|serial|UDI)\s*(?:serial|number|no\.?|id|#)?\s*[:#-]?\s*[A-Za-z0-9-]{5,}\b",
+        "MRN": (
+            r"\b(?:MRN|MR#|Medical Record (?:Number|No)|Patient (?:ID|Number)|Pt\.?\s*ID)"
+            r"[:#\s-]*[A-Za-z0-9][A-Za-z0-9-]{3,}\b"
+        ),
+        "ACCOUNT_NUMBER": (
+            r"\b(?:account|acct|FIN)\s*(?:number|no\.?|#)?\s*[:#-]?\s*"
+            r"[A-Za-z0-9-]{4,}\b"
+        ),
+        "ENCOUNTER_ID": (
+            r"\b(?:encounter|visit|CSN)\s*(?:number|no\.?|#)?\s*[:#-]?\s*"
+            r"[A-Za-z0-9-]{4,}\b"
+        ),
+        "FACILITY": (
+            r"\b(?:[A-Z][A-Za-z0-9&'/-]*\s+){0,6}"
+            r"(?:Hospital|Medical Center|Clinic|Health System|Healthcare)\b"
+        ),
+        "DEVICE_ID": (
+            r"\b(?:device|serial|UDI)\s*(?:serial|number|no\.?|id|#)?\s*[:#-]?\s*"
+            r"[A-Za-z0-9-]{5,}\b"
+        ),
         "AGE": r"\b(?:age\s*[:=]?\s*)?\d{1,3}(?:\s*[- ]?year[- ]old|\s*y/o|\s*years?\s*old)\b",
         "DATE": r"\b(?:\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\d{4}[/-]\d{1,2}[/-]\d{1,2})\b",
     }
@@ -411,7 +443,7 @@ def _custom_recognizers() -> list[Any]:
     ]
 
 
-def build_production_deidentifier(settings: Any) -> PresidioDeidentifier:
+def build_production_deidentifier(settings: ProductionDeidSettings) -> PresidioDeidentifier:
     """Create and warm the real backend; callers must turn failures into NOT_SERVING."""
 
     if not settings.hmac_salt:

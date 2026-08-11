@@ -5,27 +5,40 @@ export interface SseEvent {
 
 export async function parseSseStream(
   body: ReadableStream<Uint8Array>,
-  onEvent: (event: SseEvent) => void
+  onEvent: (event: SseEvent) => void,
+  signal?: AbortSignal
 ) {
   const reader = body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    const frames = buffer.split(/\r?\n\r?\n/);
-    buffer = frames.pop() ?? "";
-    for (const frame of frames) {
-      const event = parseFrame(frame);
-      if (event) onEvent(event);
-    }
-  }
+  const abort = () => {
+    void reader.cancel();
+  };
+  signal?.addEventListener("abort", abort, { once: true });
 
-  buffer += decoder.decode();
-  const finalEvent = parseFrame(buffer);
-  if (finalEvent) onEvent(finalEvent);
+  try {
+    while (true) {
+      if (signal?.aborted)
+        throw new DOMException("The answer stream was interrupted.", "AbortError");
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const frames = buffer.split(/\r?\n\r?\n/);
+      buffer = frames.pop() ?? "";
+      for (const frame of frames) {
+        const event = parseFrame(frame);
+        if (event) onEvent(event);
+      }
+    }
+
+    buffer += decoder.decode();
+    const finalEvent = parseFrame(buffer);
+    if (finalEvent) onEvent(finalEvent);
+  } finally {
+    signal?.removeEventListener("abort", abort);
+    reader.releaseLock();
+  }
 }
 
 function parseFrame(frame: string): SseEvent | null {

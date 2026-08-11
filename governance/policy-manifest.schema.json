@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://medassist.local/schema/governance-policy-manifest-1.json",
+  "title": "MedAssist governance policy manifest",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "metadata", "default_policy", "column_classifications", "content_domains", "roles", "tables", "tools", "dashboards", "ops_console", "egress", "application_permissions", "drift"],
+  "properties": {
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "metadata": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "status", "evidence", "coverage", "notes"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "status": {"enum": ["draft", "approved"]},
+        "evidence": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "coverage": {"type": "object", "additionalProperties": false, "required": ["verified_schema", "unverified"], "properties": {"verified_schema": {"type": "string", "minLength": 1}, "unverified": {"type": "string", "minLength": 1}}},
+        "notes": {"type": "array", "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "default_policy": {"$ref": "#/$defs/defaultPolicy"},
+    "column_classifications": {"$ref": "#/$defs/columnCatalog"},
+    "content_domains": {"$ref": "#/$defs/domainCatalog"},
+    "roles": {"type": "array", "minItems": 3, "items": {"$ref": "#/$defs/role"}},
+    "tables": {"type": "object", "minProperties": 1, "additionalProperties": {"$ref": "#/$defs/table"}},
+    "tools": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/tool"}},
+    "dashboards": {"type": "array", "items": {"$ref": "#/$defs/dashboard"}},
+    "ops_console": {"$ref": "#/$defs/opsConsole"},
+    "egress": {"$ref": "#/$defs/egress"},
+    "application_permissions": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/permission"}},
+    "drift": {"$ref": "#/$defs/drift"}
+  },
+  "$defs": {
+    "columnLabel": {"enum": ["PHI_DIRECT", "PHI_QUASI", "CLINICAL_FIELD", "PUBLIC_FIELD"]},
+    "domainLabel": {"enum": ["CLINICAL", "POLICY", "DRUG_LABEL", "CASE_REPORT", "PUBLIC"]},
+    "roleId": {"enum": ["CLINICIAN", "RESEARCHER", "ADMIN"]},
+    "decision": {"enum": ["ALLOW", "DENY"]},
+    "defaultPolicy": {
+      "type": "object", "additionalProperties": false,
+      "required": ["decision", "unknown_role", "unknown_action", "unknown_relation", "unknown_label", "missing_identity", "direct_table_writes", "ops_console_direct_writes", "external_egress"],
+      "properties": {
+        "decision": {"const": "DENY"}, "unknown_role": {"const": "DENY"}, "unknown_action": {"const": "DENY"}, "unknown_relation": {"const": "DENY"}, "unknown_label": {"const": "DENY"}, "missing_identity": {"const": "DENY"}, "direct_table_writes": {"const": "DENY"}, "ops_console_direct_writes": {"const": "DENY"}, "external_egress": {"const": "DENY"}
+      }
+    },
+    "columnCatalog": {
+      "type": "object", "additionalProperties": false, "required": ["labels"],
+      "properties": {"labels": {"type": "object", "propertyNames": {"enum": ["PHI_DIRECT", "PHI_QUASI", "CLINICAL_FIELD", "PUBLIC_FIELD"]}, "additionalProperties": {"type": "string", "minLength": 1}, "minProperties": 4, "maxProperties": 4}}
+    },
+    "domainCatalog": {
+      "type": "object", "additionalProperties": false, "required": ["labels", "row_mappings"],
+      "properties": {
+        "labels": {"type": "object", "propertyNames": {"enum": ["CLINICAL", "POLICY", "DRUG_LABEL", "CASE_REPORT", "PUBLIC"]}, "additionalProperties": {"type": "string", "minLength": 1}, "minProperties": 5, "maxProperties": 5},
+        "row_mappings": {"type": "array", "minItems": 1, "items": {"type": "object", "additionalProperties": false, "required": ["relation", "default"], "properties": {"relation": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}, "default": {"$ref": "#/$defs/domainLabel"}, "column": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}}}}
+      }
+    },
+    "role": {
+      "type": "object", "additionalProperties": false, "required": ["id", "description", "allowed_domains", "obligations"],
+      "properties": {"id": {"$ref": "#/$defs/roleId"}, "description": {"type": "string", "minLength": 1}, "allowed_domains": {"type": "array", "items": {"$ref": "#/$defs/domainLabel"}}, "aggregate_only_domains": {"type": "array", "items": {"$ref": "#/$defs/domainLabel"}}, "obligations": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}}}
+    },
+    "table": {
+      "type": "object", "additionalProperties": false, "required": ["source", "columns", "access"],
+      "properties": {
+        "kind": {"enum": ["table", "view"]}, "source": {"type": "string", "minLength": 1},
+        "columns": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "object", "additionalProperties": false, "required": ["classification"], "properties": {"classification": {"$ref": "#/$defs/columnLabel"}}}},
+        "access": {"type": "object", "additionalProperties": false, "properties": {"CLINICIAN": {"type": "array", "items": {"const": "SELECT"}}, "RESEARCHER": {"type": "array", "items": {"const": "SELECT"}}, "ADMIN": {"type": "array", "items": {"const": "SELECT"}}}}
+      }
+    },
+    "tool": {
+      "type": "object", "additionalProperties": false, "required": ["id", "roles", "domains", "query_classifications", "aggregate_only"],
+      "properties": {"id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}, "roles": {"type": "array", "items": {"$ref": "#/$defs/roleId"}}, "domains": {"type": "array", "items": {"$ref": "#/$defs/domainLabel"}}, "query_classifications": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}}, "aggregate_only": {"type": "boolean"}}
+    },
+    "dashboard": {
+      "type": "object", "additionalProperties": false, "required": ["id", "roles", "domains", "actions"],
+      "properties": {"id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"}, "roles": {"type": "array", "items": {"$ref": "#/$defs/roleId"}}, "domains": {"type": "array", "items": {"$ref": "#/$defs/domainLabel"}}, "actions": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}}}
+    },
+    "opsConsole": {
+      "type": "object", "additionalProperties": false, "required": ["enabled", "roles", "read_relations", "direct_writes", "state_changes_via", "public_exposure"],
+      "properties": {"enabled": {"type": "boolean"}, "roles": {"type": "array", "items": {"$ref": "#/$defs/roleId"}}, "read_relations": {"type": "array", "items": {"type": "string"}}, "direct_writes": {"const": false}, "state_changes_via": {"const": "java-authorized-api"}, "public_exposure": {"const": false}}
+    },
+    "egress": {
+      "type": "object", "additionalProperties": false, "required": ["default", "destinations", "content_classes", "prohibited_sources"],
+      "properties": {
+        "default": {"const": "DENY"},
+        "destinations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "allowed", "content_classes"],
+            "properties": {
+              "id": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"},
+              "allowed": {"type": "boolean"},
+              "content_classes": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}}
+            }
+          }
+        },
+        "content_classes": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}},
+        "prohibited_sources": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}}
+      }
+    },
+    "permission": {
+      "type": "object", "additionalProperties": false, "required": ["id", "roles", "domains", "decision"],
+      "properties": {"id": {"type": "string", "pattern": "^[a-z][a-z0-9_.]*$"}, "roles": {"type": "array", "items": {"$ref": "#/$defs/roleId"}}, "domains": {"type": "array", "items": {"$ref": "#/$defs/domainLabel"}}, "decision": {"$ref": "#/$defs/decision"}, "obligations": {"type": "array", "items": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]*$"}}}
+    },
+    "drift": {
+      "type": "object", "additionalProperties": false, "required": ["schema_format", "fixtures", "exemptions"],
+      "properties": {
+        "schema_format": {"const": "relation-columns-v1"},
+        "fixtures": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}},
+        "exemptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "relation_pattern", "column_pattern", "reason", "scope", "expires"],
+            "properties": {
+              "id": {"type": "string", "minLength": 1},
+              "relation_pattern": {"type": "string", "minLength": 1},
+              "column_pattern": {"type": "string", "minLength": 1},
+              "reason": {"type": "string", "minLength": 10},
+              "scope": {"enum": ["relation-and-columns", "columns-only"]},
+              "expires": {"type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$"}
+            }
+          }
+        }
+      }
+  }
+}
+}

@@ -3,7 +3,7 @@ import ReactMarkdown from "react-markdown";
 import { Alert } from "../../components/Alert";
 import { stabilizePartialMarkdown } from "../../lib/markdown";
 import { VirtualEvidenceList } from "./VirtualEvidenceList";
-import type { AnswerResponse } from "./types";
+import { getSearchFilters, type AnswerResponse } from "./types";
 
 interface AnswerViewProps {
   answer: AnswerResponse | null;
@@ -12,6 +12,7 @@ interface AnswerViewProps {
 
 export function AnswerView({ answer, partialMarkdown }: AnswerViewProps) {
   const markdown = stabilizePartialMarkdown(answer?.answer ?? partialMarkdown);
+  const filters = answer ? getSearchFilters(answer.retrieval) : null;
 
   return (
     <div className="answer-layout">
@@ -44,14 +45,14 @@ export function AnswerView({ answer, partialMarkdown }: AnswerViewProps) {
             </div>
           </dl>
           <p className="filter-summary">
-            Filters: doc_type={answer.retrieval.appliedFilters.docTypes.join(",") || "*"};
-            publisher={answer.retrieval.appliedFilters.publishers.join(",") || "*"}
+            Filters: doc_type={filters?.docTypes.join(",") || "*"}; publisher={" "}
+            {filters?.publishers.join(",") || "*"}
           </p>
           <VirtualEvidenceList
             citations={answer.citations}
             results={answer.retrieval.results}
             viewportHeight={420}
-            rowHeight={174}
+            rowHeight={240}
           />
         </>
       ) : null}

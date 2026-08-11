@@ -1,0 +1,16 @@
+{% extends "console/base.html" %}
+{% block content %}
+<p><a href="{% url 'queue-index' %}">Back to queues</a></p>
+<h1>{{ queue_label }}</h1>
+<p>Read-only projection. Java owns authorization, state changes, and audit records.</p>
+{% if items %}
+<table>
+  <thead><tr><th>Identifier</th><th>Status</th><th>Severity</th><th>Updated</th></tr></thead>
+  <tbody>
+  {% for item in items %}
+    <tr><td>{{ item.id }}</td><td>{{ item.status }}</td><td>{{ item.severity|default:"-" }}</td><td>{{ item.updated_at|default:item.created_at }}</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% else %}<p>No queue entries are available.</p>{% endif %}
+{% endblock %}

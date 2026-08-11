@@ -1,4 +1,4 @@
-import { Search } from "lucide-react";
+import { RotateCcw, Search, Square } from "lucide-react";
 import { useState } from "react";
 import type { FormEvent } from "react";
 
@@ -9,9 +9,11 @@ import type { RetrievalFilters } from "./types";
 interface QuestionFormProps {
   disabled: boolean;
   onAsk: (query: string, filters: RetrievalFilters) => void;
+  onCancel: () => void;
+  onReset: () => void;
 }
 
-export function QuestionForm({ disabled, onAsk }: QuestionFormProps) {
+export function QuestionForm({ disabled, onAsk, onCancel, onReset }: QuestionFormProps) {
   const [query, setQuery] = useState("");
   const [docTypes, setDocTypes] = useState("");
   const [publishers, setPublishers] = useState("");
@@ -53,9 +55,27 @@ export function QuestionForm({ disabled, onAsk }: QuestionFormProps) {
           onChange={(event) => setPublishers(event.target.value)}
         />
       </div>
-      <Button disabled={disabled} icon={<Search aria-hidden="true" size={18} />} type="submit">
-        Ask
-      </Button>
+      <div className="form-actions">
+        <Button disabled={disabled} icon={<Search aria-hidden="true" size={18} />} type="submit">
+          Ask
+        </Button>
+        {disabled ? (
+          <Button
+            className="button-secondary"
+            icon={<Square aria-hidden="true" size={16} />}
+            onClick={onCancel}
+          >
+            Cancel
+          </Button>
+        ) : null}
+        <Button
+          className="button-secondary"
+          icon={<RotateCcw aria-hidden="true" size={16} />}
+          onClick={onReset}
+        >
+          Reset
+        </Button>
+      </div>
     </form>
   );
 }

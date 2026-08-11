@@ -1,8 +1,7 @@
 from __future__ import annotations
 
-from pydantic import Field
-
 from medassist_common import BaseServiceSettings
+from pydantic import Field
 
 
 class DeidSettings(BaseServiceSettings):

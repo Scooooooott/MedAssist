@@ -1,4 +1,4 @@
-import { ChevronDown } from "lucide-react";
+import { AlertTriangle, ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 import { buildHighlightSegments } from "../lib/highlight";
@@ -14,6 +14,11 @@ export function CitationItem({ citation, result }: CitationItemProps) {
   const quote = citation?.quotedSpan ?? "";
   const segments = buildHighlightSegments(result.text, quote);
   const hasHighlight = segments.some((segment) => segment.highlighted);
+  const publisher = result.publisher || "Unknown";
+  const version = result.version || "Unknown";
+  const effectiveDate = result.effectiveDate || "Unknown";
+  const score = (value: number | null | undefined) =>
+    value === null || value === undefined ? "Unknown" : value.toFixed(3);
 
   return (
     <article className="citation-card">
@@ -24,14 +29,29 @@ export function CitationItem({ citation, result }: CitationItemProps) {
         onClick={() => setExpanded((value) => !value)}
       >
         <ChevronDown aria-hidden="true" size={18} />
-        <span>{result.sourceTitle || "Unknown source"}</span>
-        <small>{result.publisher || "Unknown publisher"}</small>
+        <span>{result.sourceTitle || "Unknown"}</span>
+        <small>{publisher}</small>
       </button>
       <div className="citation-meta">
-        <span>{result.docType || "Unknown type"}</span>
-        <span>{result.version || "Unknown version"}</span>
-        <span>{result.effectiveDate || "Unknown date"}</span>
-        <span>Score {result.score.toFixed(3)}</span>
+        <span>Publisher: {publisher}</span>
+        <span>Version: {version}</span>
+        <span>Effective date: {effectiveDate}</span>
+        <span>Status: {result.documentStatus || "Unknown"}</span>
+        <span>Type: {result.docType || "Unknown"}</span>
+        <span>Score: {score(result.score)}</span>
+      </div>
+      {result.stale ? (
+        <div className="stale-warning" role="alert">
+          <AlertTriangle aria-hidden="true" size={16} />
+          <span>Stale document: verify that this source is still current.</span>
+        </div>
+      ) : null}
+      <div className="citation-ranks" aria-label="Retrieval ranks and scores">
+        <span>Vector rank: {result.vectorRank ?? "Unknown"}</span>
+        <span>Lexical rank: {result.lexicalRank ?? "Unknown"}</span>
+        <span>Vector score: {score(result.vectorScore)}</span>
+        <span>Lexical score: {score(result.lexicalScore)}</span>
+        <span>Fused score: {score(result.fusedScore)}</span>
       </div>
       {expanded ? (
         <div className="chunk-text">

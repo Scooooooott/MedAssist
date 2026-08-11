@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import logging
 import signal
-from concurrent import futures
 from collections.abc import Callable
+from concurrent import futures
 from types import FrameType
 
 import grpc

@@ -1,0 +1,32 @@
+{
+  "format": "relation-columns-v1",
+  "relations": {
+    "document": {"columns": ["id", "source_system", "source_uri", "doc_type", "publisher", "title", "created_at"]},
+    "document_version": {"columns": ["id", "document_id", "version", "content_hash", "effective_date", "retrieved_at", "status", "superseded_by", "storage_uri", "content_domain", "metadata"]},
+    "chunk": {"columns": ["id", "document_version_id", "ordinal", "section_path", "text", "token_count", "content_domain", "source_char_start", "source_char_end", "phi_scan_status", "phi_entity_types", "metadata", "created_at", "context_prefix", "contextual_mode", "context_prompt_version", "chunking_strategy_id", "lexical_search", "lexical_search_unstemmed"]},
+    "chunk_embedding": {"columns": ["chunk_id", "model_name", "model_version", "embedding", "created_at", "contextual_mode"]},
+    "chunk_embedding_768": {"columns": ["chunk_id", "model_name", "model_version", "contextual_mode", "embedding", "created_at"]},
+    "chunk_embedding_1536": {"columns": ["chunk_id", "model_name", "model_version", "contextual_mode", "embedding", "created_at"]},
+    "chunk_context": {"columns": ["id", "document_version_id", "chunking_strategy_id", "chunk_ordinal", "mode", "prompt_version", "context_text", "input_tokens", "output_tokens", "estimated_cost_usd", "generation_status", "created_at"]},
+    "ingestion_run": {"columns": ["id", "started_at", "finished_at", "status", "discovered_count", "parsed_count", "deidentified_count", "chunked_count", "embedded_count", "indexed_count", "skipped_count", "failed_count", "parameters"]},
+    "ingestion_item": {"columns": ["id", "ingestion_run_id", "document_id", "document_version_id", "source_uri", "stage", "status", "duration_ms", "error_code", "error_message", "created_at"]},
+    "ingestion_stage": {"columns": ["ingestion_run_id", "logical_document_id", "document_version_id", "source_uri", "source_id", "mime_type", "size_bytes", "content_hash", "previous_content_hash", "classification", "object_metadata", "force_reprocess", "status", "deidentified_ir", "phi_type_counts", "policy_version", "processing_status", "indexing_result", "quarantine_stage", "error_code", "safe_reason", "created_at", "updated_at"]},
+    "quarantine": {"columns": ["id", "document_id", "document_version_id", "source_uri", "failure_stage", "failure_reason", "content_hash", "created_at"]},
+    "phi_detection_log": {"columns": ["id", "document_version_id", "entity_type", "entity_count", "recognizer", "policy_version", "created_at"]},
+    "document_metadata_review": {"columns": ["id", "document_version_id", "missing_fields", "status", "reason_code", "created_at", "resolved_at"]},
+    "chunk_phi_review": {"columns": ["id", "chunk_id", "phi_scan_status", "phi_entity_types", "status", "created_at", "resolved_at"]},
+    "evaluation_run": {"columns": ["id", "eval_set_version", "split", "code_commit", "model_name", "model_version", "judge_model", "random_seed", "metrics", "result_uri", "created_at"]},
+    "holdout_consumption": {"columns": ["holdout_version", "eval_set_version", "status", "evaluation_run_id", "reserved_at", "consumed_at", "use_count", "reuse_bias_note"]},
+    "embedding_model_registry": {"columns": ["model_name", "model_version", "dimension", "provider_type", "enabled", "created_at"]},
+    "clinical_import_run": {"columns": ["id", "source_id", "status", "accepted_count", "quarantined_count", "started_at", "finished_at"]},
+    "clinical_patient": {"columns": ["source_id", "resource_id", "birth_year", "age_band", "gender", "race", "ethnicity", "zip3", "imported_at"]},
+    "clinical_encounter": {"columns": ["source_id", "resource_id", "patient_id", "type_system", "type_code", "type_display", "start_year", "end_year", "reason_system", "reason_code", "reason_display", "imported_at"]},
+    "clinical_condition": {"columns": ["source_id", "resource_id", "patient_id", "encounter_id", "code_system", "code", "code_display", "display", "onset_year", "status", "imported_at"]},
+    "clinical_medication": {"columns": ["source_id", "resource_id", "patient_id", "encounter_id", "code_system", "code", "code_display", "display", "start_year", "end_year", "status", "imported_at"]},
+    "clinical_observation": {"columns": ["source_id", "resource_id", "patient_id", "encounter_id", "code_system", "code", "code_display", "display", "value", "unit", "observation_year", "imported_at"]},
+    "clinical_quarantine": {"columns": ["source_id", "resource_type", "resource_id", "stage", "reason_code", "safe_reason", "created_at"]},
+    "clinical_research_condition_counts": {"columns": ["code_system", "code", "status", "patient_count", "aggregate_count"]},
+    "clinical_research_observation_counts": {"columns": ["code_system", "code", "unit", "observation_year", "patient_count", "aggregate_count"]},
+    "clinical_research_encounter_counts": {"columns": ["type_system", "type_code", "start_year", "patient_count", "aggregate_count"]}
+  }
+}

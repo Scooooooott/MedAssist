@@ -1,0 +1,13 @@
+package com.medassist.agent.security;
+
+public enum PromptInjectionCategory {
+  NONE,
+  INSTRUCTION_HIJACK,
+  PROMPT_EXFILTRATION,
+  SAFETY_BYPASS,
+  ROLE_HIJACK,
+  TOOL_ABUSE,
+  BOUNDARY_SPOOFING,
+  ENCODING_OBFUSCATION,
+  INVALID_INPUT
+}

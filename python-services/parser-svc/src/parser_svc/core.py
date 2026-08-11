@@ -14,6 +14,8 @@ class ParsedTable:
     rows: list[dict[str, str]]
     start: int
     end: int
+    section_path: str = ""
+    linearized_text: str = ""
 
 
 @dataclass
@@ -24,7 +26,7 @@ class ParsedSection:
     text: str
     start: int
     end: int
-    children: list["ParsedSection"] = field(default_factory=list)
+    children: list[ParsedSection] = field(default_factory=list)
 
 
 @dataclass
@@ -98,21 +100,31 @@ class LightweightParser:
     def parse_bytes(self, payload: bytes, suffix: str, source: str = "") -> ParsedDocument:
         suffix = suffix.lower()
         if suffix not in self.supported_suffixes:
-            return ParsedDocument([], [], {"source": source}, [f"unsupported format: {suffix}"], "FAILED")
+            return ParsedDocument(
+                [], [], {"source": source}, [f"unsupported format: {suffix}"], "FAILED"
+            )
         if not payload:
             return ParsedDocument([], [], {"source": source}, ["document is empty"], "FAILED")
         try:
             text = payload.decode("utf-8")
         except UnicodeDecodeError:
-            return ParsedDocument([], [], {"source": source}, ["document is not valid UTF-8"], "FAILED")
+            return ParsedDocument(
+                [], [], {"source": source}, ["document is not valid UTF-8"], "FAILED"
+            )
         if suffix in {".html", ".htm"}:
-            text = _HtmlToMarkdown()
-            text.feed(payload.decode("utf-8"))
-            text = text.render()
-        tables = self._tables(text)
+            renderer = _HtmlToMarkdown()
+            renderer.feed(payload.decode("utf-8"))
+            text = renderer.render()
         sections = self._sections(text)
+        tables = self._tables(text, sections)
         if not sections and not tables:
-            return ParsedDocument([], [], {"source": source}, ["document contains no parseable content"], "FAILED")
+            return ParsedDocument(
+                [],
+                [],
+                {"source": source},
+                ["document contains no parseable content"],
+                "FAILED",
+            )
         return ParsedDocument(
             sections,
             tables,
@@ -121,7 +133,7 @@ class LightweightParser:
             "SUCCEEDED",
         )
 
-    def _tables(self, text: str) -> list[ParsedTable]:
+    def _tables(self, text: str, sections: list[ParsedSection]) -> list[ParsedTable]:
         lines = text.splitlines(keepends=True)
         tables: list[ParsedTable] = []
         offset = 0
@@ -129,7 +141,8 @@ class LightweightParser:
         while index + 1 < len(lines):
             header = lines[index].strip()
             separator = lines[index + 1].strip()
-            if "|" not in header or not re.fullmatch(r"\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?", separator):
+            separator_pattern = r"\|?\s*:?-{3,}:?\s*(?:\|\s*:?-{3,}:?\s*)+\|?"
+            if "|" not in header or not re.fullmatch(separator_pattern, separator):
                 offset += len(lines[index])
                 index += 1
                 continue
@@ -140,14 +153,54 @@ class LightweightParser:
             row_index = index + 2
             while row_index < len(lines) and "|" in lines[row_index]:
                 values = [part.strip() for part in lines[row_index].strip().strip("|").split("|")]
-                rows.append({name: values[pos] if pos < len(values) else "" for pos, name in enumerate(headers)})
+                row = {
+                    name: values[pos] if pos < len(values) else ""
+                    for pos, name in enumerate(headers)
+                }
+                rows.append(row)
                 cursor += len(lines[row_index])
                 row_index += 1
-            tables.append(ParsedTable(f"table-{len(tables) + 1}", headers, rows, start, cursor))
+            section_path = self._section_path_for_offset(sections, start)
+            tables.append(
+                ParsedTable(
+                    f"table-{len(tables) + 1}",
+                    headers,
+                    rows,
+                    start,
+                    cursor,
+                    section_path,
+                    self._linearize_table(headers, rows),
+                )
+            )
             while index < row_index:
                 offset += len(lines[index])
                 index += 1
         return tables
+
+    @staticmethod
+    def _section_path_for_offset(sections: list[ParsedSection], offset: int) -> str:
+        candidates: list[ParsedSection] = []
+
+        def visit(section: ParsedSection) -> None:
+            if section.start <= offset < section.end:
+                candidates.append(section)
+                for child in section.children:
+                    visit(child)
+
+        for section in sections:
+            visit(section)
+        return max(candidates, key=lambda section: section.level).path if candidates else ""
+
+    @staticmethod
+    def _linearize_table(headers: list[str], rows: list[dict[str, str]]) -> str:
+        lines = [
+            "| " + " | ".join(headers) + " |",
+            "| " + " | ".join("---" for _ in headers) + " |",
+        ]
+        lines.extend(
+            "| " + " | ".join(row.get(header, "") for header in headers) + " |" for row in rows
+        )
+        return "\n".join(lines)
 
     def _sections(self, text: str) -> list[ParsedSection]:
         matches = list(re.finditer(r"^(#{1,6})\s+(.+?)\s*$", text, re.MULTILINE))

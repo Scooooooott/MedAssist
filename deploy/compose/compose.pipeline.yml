@@ -63,10 +63,50 @@ services:
         condition: service_healthy
       model-svc:
         condition: service_healthy
+    environment:
+      MEDASSIST_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-medassist}
+      MEDASSIST_DB_USERNAME: ${POSTGRES_USER:-medassist_app}
+      MEDASSIST_DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      MEDASSIST_MINIO_ENDPOINT: http://minio:9000
+      MEDASSIST_MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:?set MINIO_ROOT_USER}
+      MEDASSIST_MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+      MEDASSIST_PARSER_ENDPOINT: parser-svc:9001
+      MEDASSIST_DEID_ENDPOINT: deid-svc:9002
+      MEDASSIST_MODEL_ENDPOINT: model-svc:9003
     ports:
       - "8082:8082"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  retrieval:
+    build:
+      context: ../..
+      dockerfile: services/retrieval/Dockerfile
+    profiles: ["pipeline", "full"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      model-svc:
+        condition: service_healthy
+      ingestion:
+        condition: service_healthy
+    environment:
+      MEDASSIST_DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-medassist}
+      MEDASSIST_DB_USERNAME: ${POSTGRES_USER:-medassist_app}
+      MEDASSIST_DB_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      MEDASSIST_RETRIEVAL_MODEL_SERVICE_ENDPOINT: model-svc:9003
+      MEDASSIST_LLM_ENABLED: "false"
+    ports:
+      - "8084:8084"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8084/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 10

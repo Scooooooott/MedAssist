@@ -61,4 +61,22 @@ describe("base components", () => {
 
     expect(screen.getByText(/guideline recommends aspirin/i).tagName.toLowerCase()).toBe("mark");
   });
+
+  it("shows complete freshness metadata and a prominent stale warning", () => {
+    render(
+      <CitationItem
+        result={makeResult(0, {
+          publisher: null,
+          version: null,
+          effectiveDate: null,
+          stale: true
+        })}
+      />
+    );
+
+    expect(screen.getByText("Publisher: Unknown")).toBeInTheDocument();
+    expect(screen.getByText("Version: Unknown")).toBeInTheDocument();
+    expect(screen.getByText("Effective date: Unknown")).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent("Stale document");
+  });
 });

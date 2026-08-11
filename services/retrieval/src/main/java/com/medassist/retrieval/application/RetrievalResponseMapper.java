@@ -21,6 +21,10 @@ public class RetrievalResponseMapper {
         outcome.query().distanceMetric(),
         toDto(outcome.query().filters()),
         outcome.chunks().stream().map(this::toDto).toList(),
+        outcome.query().retrievalMode(),
+        outcome.query().rerankEnabled(),
+        outcome.degraded(),
+        outcome.degradationReasons(),
         new TimingBreakdownDto(
             outcome.embeddingMs(), outcome.retrievalMs(), 0L, outcome.retrievalMs()),
         Instant.now());
@@ -53,6 +57,13 @@ public class RetrievalResponseMapper {
         chunk.sourceTitle(),
         chunk.version(),
         chunk.effectiveDate(),
+        chunk.documentStatus(),
+        chunk.stale(),
+        chunk.vectorRank(),
+        chunk.lexicalRank(),
+        chunk.vectorScore(),
+        chunk.lexicalScore(),
+        chunk.fusedScore(),
         chunk.metadata());
   }
 }

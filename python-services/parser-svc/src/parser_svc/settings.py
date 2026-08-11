@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from medassist_common import BaseServiceSettings
+from pydantic import Field
 
 
 class ParserSettings(BaseServiceSettings):
@@ -13,3 +14,4 @@ class ParserSettings(BaseServiceSettings):
     s3_session_token: str | None = None
     s3_force_path_style: bool = True
     pdf_backend: str = "docling"
+    pdf_timeout_seconds: float = Field(default=120.0, gt=0)

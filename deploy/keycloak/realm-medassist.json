@@ -1,0 +1,44 @@
+{
+  "realm": "medassist",
+  "enabled": true,
+  "displayName": "MedAssist",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "roles": {
+    "realm": [
+      {"name": "CLINICIAN", "description": "Clinical review and clinical data role"},
+      {"name": "RESEARCHER", "description": "Aggregate research role"},
+      {"name": "ADMIN", "description": "Governance administration role"}
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "medassist-frontend",
+      "name": "MedAssist public frontend",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "clientAuthenticatorType": "none",
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": {"pkce.code.challenge.method": "S256"},
+      "defaultClientScopes": ["profile", "email", "roles", "web-origins"]
+    },
+    {"clientId": "medassist-gateway", "name": "Gateway service", "protocol": "openid-connect", "publicClient": false, "clientAuthenticatorType": "client-secret", "standardFlowEnabled": false, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": true, "defaultClientScopes": ["roles"]},
+    {"clientId": "medassist-identity-policy", "name": "Identity policy service", "protocol": "openid-connect", "publicClient": false, "clientAuthenticatorType": "client-secret", "standardFlowEnabled": false, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": true, "defaultClientScopes": ["roles"]},
+    {"clientId": "medassist-audit-governance", "name": "Audit governance service", "protocol": "openid-connect", "publicClient": false, "clientAuthenticatorType": "client-secret", "standardFlowEnabled": false, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": true, "defaultClientScopes": ["roles"]},
+    {"clientId": "medassist-clinical-data", "name": "Clinical data service", "protocol": "openid-connect", "publicClient": false, "clientAuthenticatorType": "client-secret", "standardFlowEnabled": false, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": true, "defaultClientScopes": ["roles"]},
+    {"clientId": "medassist-ingestion", "name": "Ingestion service", "protocol": "openid-connect", "publicClient": false, "clientAuthenticatorType": "client-secret", "standardFlowEnabled": false, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": true, "defaultClientScopes": ["roles"]},
+    {"clientId": "medassist-retrieval", "name": "Retrieval service", "protocol": "openid-connect", "publicClient": false, "clientAuthenticatorType": "client-secret", "standardFlowEnabled": false, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": true, "defaultClientScopes": ["roles"]},
+    {"clientId": "medassist-agent", "name": "Agent service", "protocol": "openid-connect", "publicClient": false, "clientAuthenticatorType": "client-secret", "standardFlowEnabled": false, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": true, "defaultClientScopes": ["roles"]},
+    {"clientId": "medassist-ops-console", "name": "Operations console", "protocol": "openid-connect", "publicClient": false, "clientAuthenticatorType": "client-secret", "standardFlowEnabled": true, "directAccessGrantsEnabled": false, "serviceAccountsEnabled": false, "redirectUris": ["http://localhost:8000/*"], "webOrigins": ["http://localhost:8000"], "defaultClientScopes": ["profile", "email", "roles", "web-origins"]}
+  ],
+  "users": [
+    {"username": "demo-clinician", "enabled": true, "emailVerified": true, "email": "demo-clinician@example.invalid", "firstName": "Demo", "lastName": "Clinician", "realmRoles": ["CLINICIAN"], "attributes": {"demo_account": ["true"], "password_source": ["environment"]}},
+    {"username": "demo-researcher", "enabled": true, "emailVerified": true, "email": "demo-researcher@example.invalid", "firstName": "Demo", "lastName": "Researcher", "realmRoles": ["RESEARCHER"], "attributes": {"demo_account": ["true"], "password_source": ["environment"]}},
+    {"username": "demo-admin", "enabled": true, "emailVerified": true, "email": "demo-admin@example.invalid", "firstName": "Demo", "lastName": "Administrator", "realmRoles": ["ADMIN"], "attributes": {"demo_account": ["true"], "password_source": ["environment"]}}
+  ]
+}

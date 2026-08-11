@@ -20,6 +20,26 @@ message SearchRequest {
   string role = 5;
   string model_name = 6;
   string model_version = 7;
+  RetrievalMode retrieval_mode = 8;
+  bool rerank_enabled = 9;
+  bool include_superseded = 10;
+  ContextualRetrievalMode contextual_retrieval_mode = 11;
+  string chunking_strategy_id = 12;
+  int32 candidate_top_n = 13;
+}
+
+enum RetrievalMode {
+  RETRIEVAL_MODE_UNSPECIFIED = 0;
+  RETRIEVAL_MODE_VECTOR_ONLY = 1;
+  RETRIEVAL_MODE_LEXICAL_ONLY = 2;
+  RETRIEVAL_MODE_HYBRID = 3;
+}
+
+enum ContextualRetrievalMode {
+  CONTEXTUAL_RETRIEVAL_MODE_UNSPECIFIED = 0;
+  CONTEXTUAL_RETRIEVAL_MODE_OFF = 1;
+  CONTEXTUAL_RETRIEVAL_MODE_RULE_BASED = 2;
+  CONTEXTUAL_RETRIEVAL_MODE_LLM_GENERATED = 3;
 }
 
 message RetrievalFilters {
@@ -40,6 +60,10 @@ message SearchResponse {
   repeated RetrievalResult results = 7;
   TimingBreakdown timing = 8;
   ErrorDetail error = 9;
+  RetrievalMode retrieval_mode = 10;
+  bool rerank_enabled = 11;
+  bool degraded = 12;
+  repeated string degradation_reasons = 13;
 }
 
 message RetrievalResult {
@@ -55,6 +79,13 @@ message RetrievalResult {
   string distance_metric = 10;
   DocumentMetadata source = 11;
   map<string, string> metadata = 12;
+  string document_status = 13;
+  bool stale = 14;
+  int32 vector_rank = 15;
+  int32 lexical_rank = 16;
+  double vector_score = 17;
+  double lexical_score = 18;
+  double fused_score = 19;
 }
 
 message DocumentMetadata {

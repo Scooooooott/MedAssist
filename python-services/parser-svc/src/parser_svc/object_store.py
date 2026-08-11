@@ -10,7 +10,9 @@ from parser_svc.settings import ParserSettings
 class ObjectStoreError(RuntimeError):
     """A safe, user-facing object storage failure."""
 
-    def __init__(self, code: str, message: str, *, attribute: tuple[str, str] | None = None) -> None:
+    def __init__(
+        self, code: str, message: str, *, attribute: tuple[str, str] | None = None
+    ) -> None:
         super().__init__(message)
         self.code = code
         self.attribute = attribute
@@ -32,7 +34,7 @@ class S3ObjectStore:
 
     _supported_schemes = frozenset({"s3", "minio"})
 
-    def __init__(self, settings: ParserSettings, client: Any | None = None) -> None:
+    def __init__(self, settings: ParserSettings, client: Any | None = None) -> None:  # noqa: ANN401
         self._settings = settings
         self._client = client
 
@@ -43,7 +45,9 @@ class S3ObjectStore:
             response = client.get_object(Bucket=bucket, Key=key)
             body = response["Body"].read()
         except Exception as exc:
-            raise ObjectStoreError("STORAGE_READ_FAILED", "unable to read the storage object") from exc
+            raise ObjectStoreError(
+                "STORAGE_READ_FAILED", "unable to read the storage object"
+            ) from exc
         if not isinstance(body, bytes) or not body:
             raise ObjectStoreError("STORAGE_OBJECT_EMPTY", "storage object is empty")
         content_type = str(response.get("ContentType") or "")
@@ -61,10 +65,12 @@ class S3ObjectStore:
         bucket = parsed.netloc.strip()
         key = unquote(parsed.path.lstrip("/"))
         if not bucket or not key or parsed.params:
-            raise ObjectStoreError("INVALID_STORAGE_URI", "storage_uri must include bucket and object key")
+            raise ObjectStoreError(
+                "INVALID_STORAGE_URI", "storage_uri must include bucket and object key"
+            )
         return bucket, key
 
-    def _build_client(self) -> Any:
+    def _build_client(self) -> Any:  # noqa: ANN401
         try:
             import boto3
             from botocore.config import Config

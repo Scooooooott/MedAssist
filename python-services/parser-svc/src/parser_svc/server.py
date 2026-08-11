@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import grpc
-
 from medassist_common import configure_logging, serve_health
+
 from parser_svc.pdf import PdfBackendError, build_pdf_backend
-from parser_svc.settings import ParserSettings
 from parser_svc.service import ParserServiceServicer, build_parser_service
+from parser_svc.settings import ParserSettings
 
 
 def create_parser_service(settings: ParserSettings) -> ParserServiceServicer:

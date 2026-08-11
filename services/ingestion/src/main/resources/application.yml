@@ -5,9 +5,13 @@ spring:
     job:
       enabled: false
     jdbc:
-      initialize-schema: always
+      initialize-schema: never
   flyway:
     enabled: true
+  datasource:
+    url: ${MEDASSIST_DB_URL:jdbc:postgresql://localhost:5432/medassist}
+    username: ${MEDASSIST_DB_USERNAME:medassist}
+    password: ${MEDASSIST_DB_PASSWORD:medassist}
 server:
   port: 8082
 medassist:
@@ -16,6 +20,43 @@ medassist:
     max-tokens: 1024
     min-tokens: 100
     overlap-tokens: 50
+    semantic-breakpoint-threshold: 0.65
+    default-strategy-id: structure-v1
+  ingestion:
+    embedding-batch-size: 32
+    vector-dimension: 1024
+    skip-limit: 20
+    retry-max-attempts: 3
+    retry-initial-backoff: 250ms
+    retry-max-backoff: 2s
+    retry-multiplier: 2.0
+    default-source-system: minio
+    default-doc-type: UNKNOWN
+    default-content-domain: PUBLIC
+    parser-timeout: 120s
+    deid-timeout: 120s
+    model-timeout: 120s
+    phi-scan-timeout: 120s
+    deidentification-policy: SAFE_HARBOR_SURROGATE
+    embedding-model:
+      name: bge-m3
+      version: m1-baseline
+      dimension: 1024
+    context:
+      mode: OFF
+      prompt-version: context-v1
+      backfill-chunk-limit: 500
+      approved-cost-artifact: ${MEDASSIST_CONTEXT_COST_ARTIFACT:config/context-cost-not-approved.json}
+      approved-cost-artifact-sha256: ${MEDASSIST_CONTEXT_COST_ARTIFACT_SHA256:0000000000000000000000000000000000000000000000000000000000000000}
+    minio:
+      endpoint: ${MEDASSIST_MINIO_ENDPOINT:http://localhost:9000}
+      access-key: ${MEDASSIST_MINIO_ACCESS_KEY:}
+      secret-key: ${MEDASSIST_MINIO_SECRET_KEY:}
+      bucket: ${MEDASSIST_MINIO_RAW_BUCKET:raw-documents}
+    services:
+      parser-endpoint: ${MEDASSIST_PARSER_ENDPOINT:localhost:9001}
+      deid-endpoint: ${MEDASSIST_DEID_ENDPOINT:localhost:9002}
+      model-endpoint: ${MEDASSIST_MODEL_ENDPOINT:localhost:9003}
 logging:
   pattern:
     level: "%5p [trace_id=%X{trace_id:-}]"

@@ -21,6 +21,13 @@ public record RetrievalResultDto(
     String sourceTitle,
     String version,
     LocalDate effectiveDate,
+    String documentStatus,
+    boolean stale,
+    Integer vectorRank,
+    Integer lexicalRank,
+    Double vectorScore,
+    Double lexicalScore,
+    Double fusedScore,
     Map<String, String> metadata) {
   public RetrievalResultDto {
     metadata = metadata == null ? Map.of() : Map.copyOf(metadata);
