@@ -1,0 +1,6 @@
+vectors { values: 0.1 values: -0.25 values: 1.2345679 }
+vectors { values: 3.4028235e+38 values: 1.17549435e-38 values: -0.0 }
+vectors { values: -1.0 values: 0.5 values: 2.0 }
+model_name: "fixture-embed"
+model_version: "v1"
+dimension: 3

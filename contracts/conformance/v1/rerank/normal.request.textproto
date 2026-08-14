@@ -1,0 +1,13 @@
+metadata { trace_id: "rerank-normal" request_id: "rerank-normal" actor: "fixture-user" role: "CLINICIAN" }
+query: "heart failure treatment"
+candidates {
+  id: "candidate-low"
+  text: "blood pressure monitoring"
+  metadata { key: "section" value: "monitoring" }
+}
+candidates {
+  id: "candidate-high"
+  text: "heart failure treatment guidance"
+  metadata { key: "section" value: "treatment" }
+}
+model_name: "fixture-reranker"

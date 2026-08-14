@@ -1,0 +1,52 @@
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:v25.3.11
+    profiles: ["events", "full"]
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp=1
+      - --memory=1G
+      - --reserve-memory=0M
+      - --node-id=0
+      - --check=false
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --rpc-addr=0.0.0.0:33145
+      - --advertise-rpc-addr=redpanda:33145
+      - --schema-registry-addr=0.0.0.0:8081
+    ports:
+      - "19092:19092"
+      - "18081:8081"
+      - "19644:9644"
+    volumes:
+      - redpanda-data:/var/lib/redpanda/data
+    healthcheck:
+      test: ["CMD", "rpk", "cluster", "health", "--brokers=localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redpanda-topic-init:
+    image: docker.redpanda.com/redpandadata/redpanda:v25.3.11
+    profiles: ["events", "full"]
+    depends_on:
+      redpanda:
+        condition: service_healthy
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        rpk topic create audit-events --if-not-exists --partitions 1 --replicas 1 --topic-config retention.ms=${AUDIT_EVENTS_RETENTION_MS:-7776000000} -X brokers=redpanda:9092
+        rpk topic create audit-events-dlq --if-not-exists --partitions 1 --replicas 1 --topic-config retention.ms=${AUDIT_DLQ_RETENTION_MS:-2592000000} -X brokers=redpanda:9092
+        rpk topic create ingestion-events --if-not-exists --partitions 3 --replicas 1 --topic-config retention.ms=${INGESTION_EVENTS_RETENTION_MS:-604800000} -X brokers=redpanda:9092
+        rpk topic create feedback-events --if-not-exists --partitions 3 --replicas 1 --topic-config retention.ms=${FEEDBACK_EVENTS_RETENTION_MS:-2592000000} -X brokers=redpanda:9092
+        rpk registry schema create audit-events-value --schema /schemas/audit_event.proto --type protobuf -X registry.hosts=redpanda:8081
+        rpk registry compatibility-level set audit-events-value --level BACKWARD -X registry.hosts=redpanda:8081
+    volumes:
+      - ../../contracts/proto/medassist/contracts/v1/audit_event.proto:/schemas/audit_event.proto:ro
+    restart: "no"
+
+volumes:
+  redpanda-data:

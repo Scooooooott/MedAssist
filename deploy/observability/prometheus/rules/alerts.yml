@@ -1,0 +1,126 @@
+groups:
+  - name: medassist-compliance-alerts
+    rules:
+      - alert: MedAssistPhiLeakageCanaryDetected
+        expr: increase(medassist_phi_leakage_canary_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          class: compliance
+        annotations:
+          summary: PHI leakage canary is non-zero
+          action: Stop external service immediately and follow the compliance incident runbook.
+      - alert: MedAssistAuditChainIntegrityFailure
+        expr: increase(medassist_audit_chain_integrity_failures_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          class: compliance
+        annotations:
+          summary: Audit hash-chain verification failed
+          action: Stop external service immediately and preserve audit evidence.
+      - alert: MedAssistUnauthorizedToolAccess
+        expr: increase(medassist_security_unauthorized_tool_access_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          class: compliance
+        annotations:
+          summary: Unauthorized Agent tool access was observed
+          action: Stop external service immediately and investigate policy enforcement.
+      - alert: MedAssistComplianceSignalMissing
+        expr: |
+          (up{job="ingestion"} == 1 unless on() medassist_phi_leakage_canary_total)
+          or (up{job="audit-governance"} == 1 unless on() medassist_audit_chain_integrity_failures_total)
+          or (up{job="agent"} == 1 unless on() medassist_security_unauthorized_tool_access_total)
+        for: 15m
+        labels:
+          severity: critical
+          class: compliance
+        annotations:
+          summary: A mandatory compliance signal is absent
+          action: Treat the service as not production-ready until the signal is restored.
+
+  - name: medassist-operational-alerts
+    rules:
+      - alert: MedAssistAvailabilityFastBurn
+        expr: (medassist:slo:availability:error_ratio_rate5m / 0.005 > 14.4) and (medassist:slo:availability:error_ratio_rate1h / 0.005 > 14.4)
+        for: 2m
+        labels:
+          severity: high
+          class: slo
+        annotations:
+          summary: Availability error budget is burning rapidly
+          runbook: docs/runbook/observability.md#slo-burn
+      - alert: MedAssistAvailabilitySustainedBurn
+        expr: (medassist:slo:availability:error_ratio_rate1h / 0.005 > 6) and (medassist:slo:availability:error_ratio_rate6h / 0.005 > 6)
+        for: 15m
+        labels:
+          severity: high
+          class: slo
+        annotations:
+          summary: Availability error budget has sustained burn
+          runbook: docs/runbook/observability.md#slo-burn
+      - alert: MedAssistAnswerLatencyFastBurn
+        expr: (medassist:slo:e2e_answer:latency_error_ratio_rate5m / 0.05 > 14.4) and (medassist:slo:e2e_answer:latency_error_ratio_rate1h / 0.05 > 14.4)
+        for: 2m
+        labels:
+          severity: high
+          class: slo
+        annotations:
+          summary: End-to-end answer latency budget is burning rapidly
+          runbook: docs/runbook/observability.md#slo-burn
+      - alert: MedAssistCircuitBreakerOpen
+        expr: max by (name) (resilience4j_circuitbreaker_state{state="open"}) == 1
+        for: 2m
+        labels:
+          severity: high
+          class: resilience
+        annotations:
+          summary: A Resilience4j circuit breaker is open
+          runbook: docs/runbook/observability.md#resilience
+      - alert: MedAssistAuditConsumerLagGrowing
+        expr: avg_over_time(medassist_audit_consumer_lag[15m]) > 100 and deriv(medassist_audit_consumer_lag[15m]) > 0
+        for: 10m
+        labels:
+          severity: warning
+          class: messaging
+        annotations:
+          summary: Audit consumer lag is persistently increasing
+          runbook: docs/runbook/observability.md#audit-transport
+      - alert: MedAssistAuditDlqBacklog
+        expr: medassist_audit_dlq_pending > 0
+        for: 10m
+        labels:
+          severity: warning
+          class: messaging
+        annotations:
+          summary: Audit DLQ contains unprocessed events
+          runbook: docs/runbook/observability.md#audit-transport
+      - alert: MedAssistAuditDlqRouted
+        expr: increase(medassist_audit_dlq_routed_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: high
+          class: messaging
+        annotations:
+          summary: An audit event was routed to the DLQ
+          runbook: docs/runbook/observability.md#audit-transport
+      - alert: MedAssistLlmBudgetNearLimit
+        expr: increase(medassist_llm_budget_soft_threshold_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          class: cost
+        annotations:
+          summary: LLM budget soft threshold was crossed
+          runbook: docs/runbook/observability.md#llm-budget
+      - alert: MedAssistPythonCapacityRejected
+        expr: sum by (service, queue) (increase(medassist_python_work_rejected_total[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          class: capacity
+        annotations:
+          summary: Python bounded worker capacity is rejecting work
+          runbook: docs/runbook/observability.md#python-capacity

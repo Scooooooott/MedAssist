@@ -2,13 +2,21 @@ package com.medassist.retrieval.rerank;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.medassist.common.context.ContextCarrier;
+import com.medassist.common.context.ExecutionContext;
+import com.medassist.common.resilience.ComponentPolicyTable;
+import com.medassist.common.resilience.ResilienceExecutor;
 import com.medassist.retrieval.application.model.RetrievedChunk;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class RerankingServiceTest {
@@ -18,12 +26,29 @@ class RerankingServiceTest {
   private final RetrievedChunk first = chunk("00000000-0000-0000-0000-000000000001", "first");
   private final RetrievedChunk second = chunk("00000000-0000-0000-0000-000000000002", "second");
   private final RetrievedChunk third = chunk("00000000-0000-0000-0000-000000000003", "third");
+  private ResilienceExecutor resilienceExecutor;
+
+  @BeforeEach
+  void bindExecutionContext() {
+    resilienceExecutor =
+        new ResilienceExecutor(
+            ComponentPolicyTable.conservativeDefaults(),
+            Executors.newVirtualThreadPerTaskExecutor());
+    ContextCarrier.restore(
+        new ExecutionContext("test-user", Set.of("CLINICIAN"), "request-id", "trace-id", Map.of()));
+  }
+
+  @AfterEach
+  void clearExecutionContext() {
+    resilienceExecutor.close();
+    ContextCarrier.clear();
+  }
 
   @Test
   void disabledReturnsOriginalTopKWithoutCallingBackend() {
     final AtomicReference<Boolean> called = new AtomicReference<>(false);
     final RerankingService service =
-        new RerankingService(
+        service(
             (query, candidates, modelName, timeout) -> {
               called.set(true);
               return null;
@@ -41,7 +66,7 @@ class RerankingServiceTest {
   @Test
   void successfulResponseOrdersByRankAndRetainsSourceMetadata() {
     final RerankingService service =
-        new RerankingService(
+        service(
             (query, candidates, modelName, timeout) ->
                 new RerankClientResponse(
                     List.of(
@@ -69,7 +94,7 @@ class RerankingServiceTest {
     final AtomicReference<String> receivedModel = new AtomicReference<>();
     final AtomicReference<Duration> receivedTimeout = new AtomicReference<>();
     final RerankingService service =
-        new RerankingService(
+        service(
             (query, candidates, modelName, timeout) -> {
               receivedCandidates.set(candidates);
               receivedModel.set(modelName);
@@ -99,7 +124,7 @@ class RerankingServiceTest {
             CONTEXT_ONLY_MARKER);
     final AtomicReference<List<RetrievedChunk>> receivedCandidates = new AtomicReference<>();
     final RerankingService service =
-        new RerankingService(
+        service(
             (query, candidates, modelName, timeout) -> {
               receivedCandidates.set(candidates);
               return new RerankClientResponse(
@@ -119,12 +144,12 @@ class RerankingServiceTest {
   @Test
   void timeoutAndBackendFailureReturnOriginalTopKWithReason() {
     final RerankingService timeoutService =
-        new RerankingService(
+        service(
             (query, candidates, modelName, timeout) -> {
               throw RerankClientException.timeout("timed out", null);
             });
     final RerankingService backendService =
-        new RerankingService(
+        service(
             (query, candidates, modelName, timeout) -> {
               throw RerankClientException.backend("unavailable", null);
             });
@@ -179,7 +204,7 @@ class RerankingServiceTest {
   @Test
   void modelIdentityMismatchIsDegraded() {
     final RerankingService service =
-        new RerankingService(
+        service(
             (query, candidates, modelName, timeout) ->
                 new RerankClientResponse(
                     List.of(
@@ -201,7 +226,7 @@ class RerankingServiceTest {
   void duplicateInputCandidateIdsAreRejectedBeforeBackendCall() {
     final AtomicReference<Boolean> called = new AtomicReference<>(false);
     final RerankingService service =
-        new RerankingService(
+        service(
             (query, candidates, modelName, timeout) -> {
               called.set(true);
               return null;
@@ -217,8 +242,12 @@ class RerankingServiceTest {
   }
 
   private RerankingService serviceWithResults(final List<RerankScore> results) {
-    return new RerankingService(
+    return service(
         (query, candidates, modelName, timeout) -> new RerankClientResponse(results, MODEL, "v1"));
+  }
+
+  private RerankingService service(final RerankClient client) {
+    return new RerankingService(client, resilienceExecutor);
   }
 
   private static RetrievedChunk chunk(final String id, final String text) {

@@ -1,13 +1,65 @@
 spring:
   application:
     name: audit-governance
+  threads:
+    virtual:
+      enabled: true
+  kafka:
+    bootstrap-servers: ${AUDIT_KAFKA_BOOTSTRAP_SERVERS:localhost:19092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.ByteArraySerializer
+      properties:
+        enable.idempotence: true
+    consumer:
+      enable-auto-commit: false
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+    listener:
+      ack-mode: manual_immediate
 server:
   port: 8086
+medassist:
+  security:
+    jwk-set-uri: "${MEDASSIST_JWK_SET_URI:http://localhost:8087/realms/medassist/protocol/openid-connect/certs}"
+  audit:
+    client:
+      enabled: ${MEDASSIST_AUDIT_CLIENT_ENABLED:false}
+    transport:
+      mode: ${AUDIT_TRANSPORT_MODE:direct}
+      topic: ${AUDIT_EVENTS_TOPIC:audit-events}
+      dlq-topic: ${AUDIT_EVENTS_DLQ_TOPIC:audit-events-dlq}
+      consumer-group: ${AUDIT_EVENTS_CONSUMER_GROUP:audit-governance-v1}
+      trajectory-events-enabled: false
+      retry-attempts: ${AUDIT_EVENTS_RETRY_ATTEMPTS:2}
+      retry-delay-ms: ${AUDIT_EVENTS_RETRY_DELAY_MS:1000}
+      chain:
+        directory: ${AUDIT_CHAIN_DIRECTORY:./var/audit-chain}
+        file: ${AUDIT_CHAIN_FILE:audit-chain.bin}
+        max-record-bytes: ${AUDIT_CHAIN_MAX_RECORD_BYTES:65536}
+        verification-interval-ms: ${AUDIT_CHAIN_VERIFICATION_INTERVAL_MS:60000}
+      buffer:
+        mode: ${AUDIT_BUFFER_MODE:file}
+        capacity: ${AUDIT_BUFFER_CAPACITY:10000}
+        directory: ${AUDIT_BUFFER_DIRECTORY:./var/audit-buffer}
+        max-message-bytes: ${AUDIT_BUFFER_MAX_MESSAGE_BYTES:65536}
+        drain-delay-ms: ${AUDIT_BUFFER_DRAIN_DELAY_MS:5000}
+        send-timeout-ms: ${AUDIT_BUFFER_SEND_TIMEOUT_MS:5000}
 logging:
   pattern:
-    level: "%5p [trace_id=%X{trace_id:-}]"
+    level: "%5p [trace_id=%X{traceId:-} span_id=%X{spanId:-}]"
 management:
+  tracing:
+    sampling:
+      probability: ${MEDASSIST_TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${MEDASSIST_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics,prometheus

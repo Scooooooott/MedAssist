@@ -228,7 +228,19 @@ def compile_outputs(manifest: Mapping[str, Any], generated_at: str | None = None
         }
         for role, domains in sorted(role_domains.items())
     }
-    tool_map = {tool["id"]: {key: tool[key] for key in ("roles", "domains", "query_classifications", "aggregate_only")} for tool in sorted(manifest["tools"], key=lambda item: item["id"])}
+    role_by_id = {role["id"]: role for role in manifest["roles"]}
+    tool_map = {}
+    for tool in sorted(manifest["tools"], key=lambda item: item["id"]):
+        entry = {
+            key: tool[key] for key in ("roles", "domains", "query_classifications", "aggregate_only")
+        }
+        entry["aggregate_only_roles"] = sorted(
+            role_id
+            for role_id in tool["roles"]
+            if tool["aggregate_only"]
+            and set(tool["domains"]) & set(role_by_id[role_id].get("aggregate_only_domains", []))
+        )
+        tool_map[tool["id"]] = entry
     ops_policy = {key: manifest["ops_console"][key] for key in ("enabled", "roles", "read_relations", "direct_writes", "state_changes_via", "public_exposure")}
     permissions = {item["id"]: {key: item[key] for key in ("roles", "domains", "decision") if key in item} | ({"obligations": item["obligations"]} if "obligations" in item else {}) for item in sorted(manifest["application_permissions"], key=lambda item: item["id"])}
     outputs = {

@@ -1,5 +1,6 @@
 package com.medassist.retrieval.rerank;
 
+import com.medassist.common.tracing.TraceContextClientInterceptor;
 import com.medassist.contracts.v1.ModelServiceGrpc;
 import com.medassist.contracts.v1.RerankCandidate;
 import com.medassist.contracts.v1.RerankRequest;
@@ -25,7 +26,11 @@ public final class GrpcRerankClient implements RerankClient, AutoCloseable {
     if (endpoint == null || endpoint.isBlank()) {
       throw new IllegalArgumentException("model service endpoint is required");
     }
-    this.channel = ManagedChannelBuilder.forTarget(endpoint).usePlaintext().build();
+    this.channel =
+        ManagedChannelBuilder.forTarget(endpoint)
+            .usePlaintext()
+            .intercept(new TraceContextClientInterceptor())
+            .build();
     this.stub = ModelServiceGrpc.newBlockingStub(channel);
   }
 

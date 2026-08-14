@@ -4,7 +4,9 @@ import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.fields;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.tngtech.archunit.base.DescribedPredicate;
 import com.tngtech.archunit.core.domain.JavaClasses;
+import com.tngtech.archunit.core.domain.JavaField;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
 import org.junit.jupiter.api.Test;
@@ -58,8 +60,7 @@ class ArchitectureRulesTest {
         .that()
         .areDeclaredInClassesThat()
         .resideInAPackage("com.medassist.domain..")
-        .and()
-        .haveRawType(java.util.Collection.class)
+        .and(haveCollectionRawType())
         .should()
         .beFinal()
         .allowEmptyShould(true)
@@ -77,6 +78,43 @@ class ArchitectureRulesTest {
         .check(classes);
   }
 
+  @Test
+  void productionCodeDoesNotCreateThreadPoolsOrPoolVirtualThreads() {
+    noClasses()
+        .that()
+        .resideOutsideOfPackage("com.medassist.common.context..")
+        .should()
+        .callMethod(java.util.concurrent.Executors.class, "newFixedThreadPool", int.class)
+        .orShould()
+        .callMethod(
+            java.util.concurrent.Executors.class,
+            "newFixedThreadPool",
+            int.class,
+            java.util.concurrent.ThreadFactory.class)
+        .orShould()
+        .callMethod(java.util.concurrent.Executors.class, "newCachedThreadPool")
+        .orShould()
+        .callMethod(
+            java.util.concurrent.Executors.class,
+            "newCachedThreadPool",
+            java.util.concurrent.ThreadFactory.class)
+        .orShould()
+        .callMethod(java.util.concurrent.Executors.class, "newSingleThreadExecutor")
+        .orShould()
+        .callMethod(
+            java.util.concurrent.Executors.class,
+            "newSingleThreadExecutor",
+            java.util.concurrent.ThreadFactory.class)
+        .orShould()
+        .callMethod(
+            java.util.concurrent.Executors.class,
+            "newThreadPerTaskExecutor",
+            java.util.concurrent.ThreadFactory.class)
+        .orShould()
+        .callMethod(java.util.concurrent.ForkJoinPool.class, "commonPool")
+        .check(classes);
+  }
+
   private static String[] servicePackages() {
     return new String[] {
       "com.medassist.gateway..",
@@ -86,6 +124,17 @@ class ArchitectureRulesTest {
       "com.medassist.retrieval..",
       "com.medassist.agent..",
       "com.medassist.auditgovernance.."
+    };
+  }
+
+  private static DescribedPredicate<JavaField> haveCollectionRawType() {
+    return new DescribedPredicate<>("have raw type List, Set, or Map") {
+      @Override
+      public boolean test(final JavaField field) {
+        return field.getRawType().isEquivalentTo(java.util.List.class)
+            || field.getRawType().isEquivalentTo(java.util.Set.class)
+            || field.getRawType().isEquivalentTo(java.util.Map.class);
+      }
     };
   }
 

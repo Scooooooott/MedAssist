@@ -5,8 +5,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.medassist.retrieval.config.RetrievalProperties;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -17,53 +15,29 @@ class DocumentVersionControllerTest {
   private static final UUID TO_ID = UUID.fromString("00000000-0000-0000-0000-000000000003");
 
   @Test
-  void historyUsesConfiguredStalenessWindow() {
-    final DocumentVersionRepository repository = mock(DocumentVersionRepository.class);
-    final RetrievalProperties properties = new RetrievalProperties();
-    properties.setStalenessYears(4);
+  void historyDelegatesToService() {
+    final DocumentVersionService service = mock(DocumentVersionService.class);
     final List<DocumentVersionView> history =
         List.of(
             new DocumentVersionView(
-                FROM_ID,
-                DOCUMENT_ID,
-                "v1",
-                LocalDate.of(2025, 1, 1),
-                "ACTIVE",
-                null,
-                "Publisher",
-                false));
-    when(repository.history(DOCUMENT_ID, 4)).thenReturn(history);
+                FROM_ID, DOCUMENT_ID, "v1", null, "ACTIVE", null, "Publisher", null));
+    when(service.history(DOCUMENT_ID)).thenReturn(history);
 
-    final DocumentVersionController controller =
-        new DocumentVersionController(repository, new ChunkVersionDiffer(), properties);
+    final DocumentVersionController controller = new DocumentVersionController(service);
 
     assertThat(controller.history(DOCUMENT_ID)).isEqualTo(history);
+    verify(service).history(DOCUMENT_ID);
   }
 
   @Test
-  void blankStrategyUsesDefaultAndExplicitStrategyIsTrimmed() {
-    final DocumentVersionRepository repository = mock(DocumentVersionRepository.class);
-    final RetrievalProperties properties = new RetrievalProperties();
-    properties.setDefaultChunkingStrategyId("structure-v2");
-    final VersionChunk before = new VersionChunk(FROM_ID, 0, "Summary", "old text");
-    final VersionChunk after = new VersionChunk(TO_ID, 0, "Summary", "new text");
-    when(repository.chunks(DOCUMENT_ID, FROM_ID, "structure-v2")).thenReturn(List.of(before));
-    when(repository.chunks(DOCUMENT_ID, TO_ID, "structure-v2")).thenReturn(List.of(after));
-    when(repository.chunks(DOCUMENT_ID, FROM_ID, "semantic-v1")).thenReturn(List.of(before));
-    when(repository.chunks(DOCUMENT_ID, TO_ID, "semantic-v1")).thenReturn(List.of(after));
-    final DocumentVersionController controller =
-        new DocumentVersionController(repository, new ChunkVersionDiffer(), properties);
+  void diffDelegatesToService() {
+    final DocumentVersionService service = mock(DocumentVersionService.class);
+    final VersionDiffResponse response =
+        new VersionDiffResponse(DOCUMENT_ID, FROM_ID, TO_ID, List.of());
+    when(service.diff(DOCUMENT_ID, FROM_ID, TO_ID, " semantic-v1 ")).thenReturn(response);
+    final DocumentVersionController controller = new DocumentVersionController(service);
 
-    final VersionDiffResponse defaultDiff = controller.diff(DOCUMENT_ID, FROM_ID, TO_ID, "  ");
-    final VersionDiffResponse explicitDiff =
-        controller.diff(DOCUMENT_ID, FROM_ID, TO_ID, " semantic-v1 ");
-
-    assertThat(defaultDiff.differences())
-        .singleElement()
-        .extracting(ChunkDifference::changeType)
-        .isEqualTo("CHANGED");
-    assertThat(explicitDiff.differences()).hasSize(1);
-    verify(repository).chunks(DOCUMENT_ID, FROM_ID, "structure-v2");
-    verify(repository).chunks(DOCUMENT_ID, TO_ID, "semantic-v1");
+    assertThat(controller.diff(DOCUMENT_ID, FROM_ID, TO_ID, " semantic-v1 ")).isEqualTo(response);
+    verify(service).diff(DOCUMENT_ID, FROM_ID, TO_ID, " semantic-v1 ");
   }
 }

@@ -1,0 +1,7 @@
+parse_status: PARSE_STATUS_FAILED
+warnings: "PDF payload could not be parsed"
+error {
+  code: "PDF_PARSE_FAILED"
+  message: "PDF payload could not be parsed"
+  attributes { key: "format" value: "pdf" }
+}

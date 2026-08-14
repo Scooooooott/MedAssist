@@ -1,6 +1,7 @@
 package com.medassist.agent.execution;
 
 import com.medassist.agent.routing.DefaultToolRegistry;
+import com.medassist.agent.state.AgentRetrievalFilters;
 import com.medassist.contracts.v1.ContextualRetrievalMode;
 import com.medassist.contracts.v1.DocumentMetadata;
 import com.medassist.contracts.v1.RequestMetadata;
@@ -17,6 +18,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
@@ -69,7 +71,7 @@ public final class RetrievalGrpcToolBackend implements ToolBackend {
                 .setRole(request.role().name()))
         .setQuery(request.query())
         .setTopK(request.topK())
-        .setFilters(toFilters(request.toolName()))
+        .setFilters(toFilters(request.toolName(), request.filters()))
         .setRole(request.role().name())
         .setRetrievalMode(RetrievalMode.RETRIEVAL_MODE_HYBRID)
         .setRerankEnabled(false)
@@ -78,12 +80,28 @@ public final class RetrievalGrpcToolBackend implements ToolBackend {
         .build();
   }
 
-  private RetrievalFilters toFilters(final String toolName) {
+  private RetrievalFilters toFilters(final String toolName, final AgentRetrievalFilters requested) {
+    final List<String> allowedDocTypes =
+        DefaultToolRegistry.POLICY_SEARCH.equals(toolName)
+            ? List.of("POLICY", "GUIDELINE")
+            : List.of("CLINICAL_NOTE");
+    if (!requested.docTypes().isEmpty()
+        && !Set.copyOf(allowedDocTypes).containsAll(requested.docTypes())) {
+      throw new IllegalArgumentException("requested document type is not allowed for this tool");
+    }
+    final List<String> docTypes =
+        requested.docTypes().isEmpty()
+            ? allowedDocTypes
+            : requested.docTypes().stream().sorted().toList();
     final RetrievalFilters.Builder filters = RetrievalFilters.newBuilder();
-    if (DefaultToolRegistry.POLICY_SEARCH.equals(toolName)) {
-      filters.addDocType("POLICY").addDocType("GUIDELINE");
-    } else {
-      filters.addDocType("CLINICAL_NOTE");
+    filters.addAllDocType(docTypes);
+    filters.addAllPublisher(requested.publishers().stream().sorted().toList());
+    filters.addAllSectionType(requested.sectionTypes().stream().sorted().toList());
+    if (requested.effectiveDateFrom() != null) {
+      filters.setEffectiveDateFrom(requested.effectiveDateFrom().toString());
+    }
+    if (requested.effectiveDateTo() != null) {
+      filters.setEffectiveDateTo(requested.effectiveDateTo().toString());
     }
     return filters.build();
   }

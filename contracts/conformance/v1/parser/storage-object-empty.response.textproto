@@ -1,0 +1,6 @@
+parse_status: PARSE_STATUS_FAILED
+error {
+  code: "STORAGE_OBJECT_EMPTY"
+  message: "storage object is empty"
+  attributes { key: "retryable" value: "false" }
+}

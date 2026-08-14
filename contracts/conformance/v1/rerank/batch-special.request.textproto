@@ -1,0 +1,6 @@
+metadata { trace_id: "rerank-batch" request_id: "rerank-batch" actor: "fixture-user" role: "CLINICIAN" }
+query: "heart \u2713"
+candidates { id: "a" text: "Jos\u00e9" metadata { key: "language" value: "es" } }
+candidates { id: "b" text: "\u5c71\u7530" metadata { key: "language" value: "ja" } }
+candidates { id: "c" text: "line1\nline2" metadata { key: "language" value: "en" } }
+model_name: "fixture-reranker"

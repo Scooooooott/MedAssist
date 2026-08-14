@@ -1,0 +1,8 @@
+entities {
+  entity_type: "EMAIL_ADDRESS"
+  start: 0
+  end: 18
+  score: 0.987654321
+  recognizer: "fixture-recognizer"
+}
+policy_version: "fixture-policy-v1"

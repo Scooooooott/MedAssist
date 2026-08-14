@@ -8,6 +8,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.medassist.agent.state.AgentRetrievalFilters;
 import com.medassist.agent.state.QueryClassification;
 import com.medassist.contracts.v1.DocumentMetadata;
 import com.medassist.contracts.v1.RetrievalResult;
@@ -16,7 +17,8 @@ import com.medassist.contracts.v1.SearchRequest;
 import com.medassist.contracts.v1.SearchResponse;
 import com.medassist.contracts.v1.SourceRange;
 import com.medassist.domain.Role;
-import java.util.Map;
+import java.time.LocalDate;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -49,7 +51,12 @@ class RetrievalGrpcToolBackendTest {
             Role.CLINICIAN,
             QueryClassification.MIXED,
             7,
-            Map.of(),
+            new AgentRetrievalFilters(
+                Set.of("GUIDELINE"),
+                Set.of("WHO"),
+                LocalDate.parse("2025-01-01"),
+                LocalDate.parse("2026-01-01"),
+                Set.of("RECOMMENDATION")),
             "trace-1",
             "request-1");
 
@@ -64,7 +71,11 @@ class RetrievalGrpcToolBackendTest {
     assertEquals("deidentified query", sent.getQuery());
     assertEquals("CLINICIAN", sent.getRole());
     assertEquals(7, sent.getTopK());
-    assertEquals(java.util.List.of("POLICY", "GUIDELINE"), sent.getFilters().getDocTypeList());
+    assertEquals(java.util.List.of("GUIDELINE"), sent.getFilters().getDocTypeList());
+    assertEquals(java.util.List.of("WHO"), sent.getFilters().getPublisherList());
+    assertEquals(java.util.List.of("RECOMMENDATION"), sent.getFilters().getSectionTypeList());
+    assertEquals("2025-01-01", sent.getFilters().getEffectiveDateFrom());
+    assertEquals("2026-01-01", sent.getFilters().getEffectiveDateTo());
     assertFalse(sent.getIncludeSuperseded());
     assertEquals(1, result.chunks().size());
     assertEquals(rawContent, result.chunks().getFirst().content());

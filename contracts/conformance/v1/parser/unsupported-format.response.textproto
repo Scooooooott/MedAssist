@@ -1,0 +1,7 @@
+parse_status: PARSE_STATUS_FAILED
+warnings: "unsupported MIME type"
+error {
+  code: "UNSUPPORTED_FORMAT"
+  message: "the requested MIME type is unsupported"
+  attributes { key: "mime_type" value: "application/octet-stream" }
+}

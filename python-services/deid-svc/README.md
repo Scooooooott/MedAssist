@@ -18,9 +18,17 @@ At minimum, install the configured spaCy model (for example
 
 ## Concurrency Model
 
-The service runs as a single process with a synchronous gRPC server. It does not
-use asyncio for request handling. Worker threads and maximum concurrent RPCs
-are configured through the shared `MEDASSIST_GRPC_WORKERS` and
-`MEDASSIST_GRPC_MAX_CONCURRENT_RPCS` settings. Current values remain
-conservative placeholders. Final tuning belongs to M5.11 after PHI detection
-latency measurements are available.
+The service uses synchronous gRPC plus a bounded online worker pool; it does not
+use asyncio. Defaults are four gRPC threads, eight concurrent RPCs, two backend
+workers, and four queued work items. `MEDASSIST_GRPC_WORKERS`,
+`MEDASSIST_GRPC_MAX_CONCURRENT_RPCS`, `MEDASSIST_WORKER_THREADS`, and
+`MEDASSIST_WORK_QUEUE_CAPACITY` configure those limits. Native runtime threads
+are explicit through `MEDASSIST_RUNTIME_INTRA_OP_THREADS=1` and
+`MEDASSIST_RUNTIME_INTER_OP_THREADS=1`. Prometheus metrics are exposed on
+`MEDASSIST_METRICS_PORT=9102` unless the port is set to zero.
+
+When the worker pool is full, `Detect` and `Anonymize` return
+`RESOURCE_EXHAUSTED`; plaintext is never passed through as a fallback. Health
+becomes `NOT_SERVING` if either the analyzer or executor is unavailable. These
+defaults are conservative and **NOT MEASURED** against the production Presidio
+asset or the 50 ms target.

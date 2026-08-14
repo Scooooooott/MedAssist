@@ -1,0 +1,11 @@
+ir {
+  sections { path: "1" heading: "Partial" level: 1 text: "Recovered content" source_range { start: 0 end: 17 } }
+  metadata { key: "format" value: "md" }
+}
+parse_status: PARSE_STATUS_PARTIAL
+warnings: "one block could not be normalized"
+error {
+  code: "PARSE_PARTIAL"
+  message: "the document was parsed with warnings"
+  attributes { key: "format" value: "md" }
+}

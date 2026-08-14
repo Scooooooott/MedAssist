@@ -2,6 +2,7 @@ from typing import Any
 
 import numpy as np
 import pytest
+
 from model_svc.backend import build_backend, build_reranker
 from model_svc.core import (
     BackendNotReadyError,
@@ -128,6 +129,19 @@ def test_backend_factory_requires_explicit_test_switch() -> None:
 
     with pytest.raises(RuntimeError):
         build_backend(settings.model_copy(update={"allow_deterministic_test_backend": False}))
+
+
+def test_onnx_runtime_thread_settings_are_explicit() -> None:
+    settings = ModelSettings(runtime_intra_op_threads=2, runtime_inter_op_threads=1)
+    backend = build_backend(settings)
+    reranker = build_reranker(settings)
+
+    assert isinstance(backend, OnnxBgeM3Backend)
+    assert backend.intra_op_threads == 2
+    assert backend.inter_op_threads == 1
+    assert isinstance(reranker, OnnxCrossEncoderReranker)
+    assert reranker.intra_op_threads == 2
+    assert reranker.inter_op_threads == 1
 
 
 def test_reranker_is_deterministic_only_when_directly_injected() -> None:

@@ -1,0 +1,3 @@
+metadata { trace_id: "invalid-storage" request_id: "invalid-storage" actor: "fixture-user" role: "CLINICIAN" }
+storage_uri: "file:///tmp/not-allowed.md"
+mime_type: "text/markdown"

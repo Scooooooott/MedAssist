@@ -2,12 +2,14 @@ package com.medassist.agent.execution;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.medassist.agent.application.DeidentifiedQuery;
 import com.medassist.agent.checkpoint.InMemoryCheckpointStore;
 import com.medassist.agent.routing.DefaultToolRegistry;
 import com.medassist.agent.state.AgentNode;
+import com.medassist.agent.state.AgentRetrievalFilters;
 import com.medassist.agent.state.AgentState;
 import com.medassist.agent.state.CitationSummary;
 import com.medassist.agent.state.DraftMetadata;
@@ -20,11 +22,13 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class DefaultAgentToolExecutorTest {
@@ -101,9 +105,70 @@ class DefaultAgentToolExecutorTest {
   }
 
   @Test
-  void mixedFailureWithUsableSuccessIsMarkedDegraded() {
+  void passesStateRetrievalFiltersToTheToolBackend() {
+    final AgentRetrievalFilters filters =
+        new AgentRetrievalFilters(Set.of("GUIDELINE"), Set.of("WHO"), null, null, Set.of());
     final AgentState state =
-        mixedState();
+        AgentState.start(
+            RequestIds.create(),
+            new DeidentifiedQuery("safe deidentified policy query"),
+            Role.CLINICIAN,
+            filters);
+    state.applyRoute(
+        QueryClassification.POLICY, Set.of(DefaultToolRegistry.POLICY_SEARCH), AgentNode.TOOL);
+    final AtomicReference<ToolInvocationRequest> captured = new AtomicReference<>();
+    final ToolBackend backend =
+        request -> {
+          captured.set(request);
+          return ToolBackendResult.empty(request.toolName());
+        };
+
+    final ToolExecutionResult result =
+        new DefaultAgentToolExecutor(new DefaultToolRegistry(), backend).execute(state);
+
+    assertTrue(result.succeeded());
+    assertEquals(filters, captured.get().filters());
+  }
+
+  @Test
+  void retryRoundsIncreaseTopKWithinTheRetrievalLimit() {
+    final List<Integer> observedTopKs = new ArrayList<>();
+    final ToolBackend backend =
+        request -> {
+          observedTopKs.add(request.topK());
+          return ToolBackendResult.empty(request.toolName());
+        };
+    final DefaultAgentToolExecutor executor =
+        new DefaultAgentToolExecutor(new DefaultToolRegistry(), backend);
+
+    final AgentState firstAttempt =
+        toolState(Role.CLINICIAN, QueryClassification.POLICY, Set.of("policy_search"));
+    assertEquals(0, firstAttempt.retryCount());
+    executor.execute(firstAttempt);
+
+    final AgentState firstRetry =
+        toolState(Role.CLINICIAN, QueryClassification.POLICY, Set.of("policy_search"));
+    firstRetry.incrementRetry();
+    assertEquals(1, firstRetry.retryCount());
+    executor.execute(firstRetry);
+
+    final AgentState cappedRetry =
+        toolState(Role.CLINICIAN, QueryClassification.POLICY, Set.of("policy_search"));
+    for (int retry = 0; retry < 100; retry++) {
+      cappedRetry.incrementRetry();
+    }
+    executor.execute(cappedRetry);
+
+    assertEquals(List.of(10, 20, ToolInvocationRequest.MAX_TOP_K), observedTopKs);
+    assertNotEquals(observedTopKs.get(0), observedTopKs.get(1));
+    assertTrue(
+        observedTopKs.stream()
+            .allMatch(topK -> topK >= 1 && topK <= ToolInvocationRequest.MAX_TOP_K));
+  }
+
+  @Test
+  void mixedFailureWithUsableSuccessIsMarkedDegraded() {
+    final AgentState state = mixedState();
     final ToolBackend backend =
         request -> {
           if (DefaultToolRegistry.POLICY_SEARCH.equals(request.toolName())) {

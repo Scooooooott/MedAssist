@@ -1,5 +1,6 @@
 package com.medassist.retrieval.grpc;
 
+import com.medassist.common.tracing.TraceContextServerInterceptor;
 import com.medassist.retrieval.config.RetrievalProperties;
 import io.grpc.Server;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
@@ -28,6 +29,7 @@ public final class RetrievalGrpcServerLifecycle implements SmartLifecycle {
     try {
       server =
           NettyServerBuilder.forPort(properties.getGrpc().getPort())
+              .intercept(new TraceContextServerInterceptor())
               .addService(service)
               .build()
               .start();

@@ -1,5 +1,6 @@
 package com.medassist.retrieval.model;
 
+import com.medassist.common.tracing.TraceContextClientInterceptor;
 import com.medassist.contracts.v1.EmbedRequest;
 import com.medassist.contracts.v1.EmbeddingInputType;
 import com.medassist.contracts.v1.ModelServiceGrpc;
@@ -16,7 +17,11 @@ public final class GrpcQueryEmbeddingClient implements QueryEmbeddingClient, Aut
     if (endpoint == null || endpoint.isBlank()) {
       throw new IllegalArgumentException("model service endpoint is required");
     }
-    this.channel = ManagedChannelBuilder.forTarget(endpoint).usePlaintext().build();
+    this.channel =
+        ManagedChannelBuilder.forTarget(endpoint)
+            .usePlaintext()
+            .intercept(new TraceContextClientInterceptor())
+            .build();
     this.stub = ModelServiceGrpc.newBlockingStub(channel);
   }
 

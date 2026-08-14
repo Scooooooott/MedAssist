@@ -1,23 +1,43 @@
 spring:
   application:
     name: retrieval
+  threads:
+    virtual:
+      enabled: true
   datasource:
     url: ${MEDASSIST_DB_URL:jdbc:postgresql://localhost:5432/medassist}
     username: ${MEDASSIST_DB_USERNAME:medassist}
     password: ${MEDASSIST_DB_PASSWORD:medassist}
     hikari:
-      maximum-pool-size: ${MEDASSIST_DB_POOL_SIZE:10}
+      maximum-pool-size: ${MEDASSIST_RETRIEVAL_DB_POOL_SIZE:20}
+      connection-timeout: ${MEDASSIST_RETRIEVAL_DB_CONNECTION_TIMEOUT_MS:250}
 server:
   port: 8084
 logging:
   pattern:
-    level: "%5p [trace_id=%X{trace_id:-}]"
+    level: "%5p [trace_id=%X{traceId:-} span_id=%X{spanId:-}]"
 management:
+  tracing:
+    sampling:
+      probability: ${MEDASSIST_TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${MEDASSIST_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
   endpoints:
     web:
       exposure:
-        include: health,metrics
+        include: health,metrics,prometheus
 medassist:
+  audit:
+    client:
+      enabled: ${MEDASSIST_AUDIT_CLIENT_ENABLED:false}
+  resilience:
+    retrieval-pool-size: ${MEDASSIST_RETRIEVAL_DB_POOL_SIZE:20}
+    clinical-data-pool-size: ${MEDASSIST_CLINICAL_DB_POOL_SIZE:8}
+  security:
+    jwk-set-uri: "${MEDASSIST_JWK_SET_URI:http://localhost:8087/realms/medassist/protocol/openid-connect/certs}"
   retrieval:
     default-top-k: 8
     max-top-k: 20
@@ -42,6 +62,7 @@ medassist:
     default-contextual-retrieval-mode: OFF
     default-chunking-strategy-id: structure-v1
     staleness-years: 3
+    legacy-answer-enabled: ${MEDASSIST_RETRIEVAL_LEGACY_ANSWER_ENABLED:false}
     lexical:
       stemming-enabled: true
     grpc:

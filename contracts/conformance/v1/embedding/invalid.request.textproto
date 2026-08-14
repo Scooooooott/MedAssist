@@ -1,0 +1,3 @@
+metadata { trace_id: "embed-invalid" request_id: "embed-invalid" actor: "fixture-user" role: "CLINICIAN" }
+texts: "synthetic text"
+model_name: "fixture-embed@v1"

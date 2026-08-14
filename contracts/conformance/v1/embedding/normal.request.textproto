@@ -1,0 +1,5 @@
+metadata { trace_id: "embed-normal" request_id: "embed-normal" actor: "fixture-user" role: "CLINICIAN" }
+texts: "heart failure"
+texts: "blood pressure"
+model_name: "fixture-embed@v1"
+input_type: EMBEDDING_INPUT_TYPE_QUERY

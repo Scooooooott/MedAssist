@@ -12,6 +12,14 @@ from model_svc.model_config import EmbeddingModelConfig
 class ModelSettings(BaseServiceSettings):
     service_name: str = "model-svc"
     grpc_port: int = 9003
+    grpc_workers: int = Field(default=4, ge=1)
+    grpc_max_concurrent_rpcs: int = Field(default=12, ge=1)
+    worker_threads: int = Field(default=2, ge=1)
+    work_queue_capacity: int = Field(default=8, ge=0)
+    query_worker_threads: int = Field(default=2, ge=1)
+    runtime_intra_op_threads: int = Field(default=1, ge=1)
+    runtime_inter_op_threads: int = Field(default=1, ge=1)
+    metrics_port: int = Field(default=9103, ge=0, le=65535)
     backend: Literal["onnx-int8", "deterministic-test"] = "onnx-int8"
     allow_deterministic_test_backend: bool = False
     model_path: Path | None = None

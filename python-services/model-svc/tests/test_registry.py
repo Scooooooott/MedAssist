@@ -6,6 +6,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
+
 from model_svc.backend import build_embedding_registry
 from model_svc.core import DeterministicEmbeddingModel
 from model_svc.model_config import EmbeddingModelConfig
@@ -16,7 +18,6 @@ from model_svc.registry import (
     RegisteredEmbeddingModel,
 )
 from model_svc.settings import ModelSettings
-from pydantic import ValidationError
 
 
 @dataclass

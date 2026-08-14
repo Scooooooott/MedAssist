@@ -9,12 +9,16 @@ public final class ContextTaskDecorator implements TaskDecorator {
   public Runnable decorate(final Runnable task) {
     Objects.requireNonNull(task, "task");
     final Optional<ExecutionContext> captured = ContextCarrier.capture();
-    return () -> runWithContext(task, captured);
+    final io.opentelemetry.context.Context traceContext =
+        io.opentelemetry.context.Context.current();
+    return () -> runWithContext(task, captured, traceContext);
   }
 
   private static void runWithContext(
-      final Runnable task, final Optional<ExecutionContext> capturedContext) {
-    try {
+      final Runnable task,
+      final Optional<ExecutionContext> capturedContext,
+      final io.opentelemetry.context.Context traceContext) {
+    try (io.opentelemetry.context.Scope ignored = traceContext.makeCurrent()) {
       if (ContextCarrier.capture().isPresent()) {
         throw new ResidualContextException("worker entered with residual execution context");
       }

@@ -141,6 +141,71 @@ class LlmDraftPathTest {
   }
 
   @Test
+  void quotedSpanMatchesCaseWhitespaceAndCommonPunctuationDifferences() {
+    final EvidenceFixture fixture = stateWithEvidence();
+    final GeneratedDraft draft =
+        new GeneratedDraft(
+            "supported answer",
+            new com.medassist.agent.state.DraftMetadata("sha256:draft", 18, java.util.Map.of()),
+            validJson(fixture.chunkId(), "EVIDENCE\\nSENTENCE \u2013 FROM A SOURCE\uFF0E"));
+
+    final VerificationResult result = new StructuredDraftVerifier().verify(draft, fixture.state());
+
+    assertTrue(result.accepted());
+    assertEquals(
+        new com.medassist.agent.state.CitationSummary(1, 1, true), result.citationSummary());
+  }
+
+  @Test
+  void quotedSpanDoesNotMatchWhenPunctuationIsOmitted() {
+    final EvidenceFixture fixture = stateWithEvidence();
+    final GeneratedDraft draft =
+        new GeneratedDraft(
+            "unsupported answer",
+            new com.medassist.agent.state.DraftMetadata("sha256:draft", 18, java.util.Map.of()),
+            validJson(fixture.chunkId(), "evidence sentence from a source"));
+
+    final VerificationResult result = new StructuredDraftVerifier().verify(draft, fixture.state());
+
+    assertFalse(result.accepted());
+    assertTrue(result.retryable());
+  }
+
+  @Test
+  void duplicateChunkCitationRemainsInvalid() {
+    final EvidenceFixture fixture = stateWithEvidence();
+    final String citation =
+        "{\"chunkId\":\"" + fixture.chunkId() + "\",\"quotedSpan\":\"evidence sentence\"}";
+    final GeneratedDraft draft =
+        new GeneratedDraft(
+            "unsupported answer",
+            new com.medassist.agent.state.DraftMetadata("sha256:draft", 18, java.util.Map.of()),
+            "{\"answer\":\"supported answer\",\"citations\":[" + citation + "," + citation + "]}");
+
+    final VerificationResult result = new StructuredDraftVerifier().verify(draft, fixture.state());
+
+    assertFalse(result.accepted());
+    assertTrue(result.retryable());
+    assertEquals(1, result.citationSummary().validCount());
+  }
+
+  @Test
+  void emptyQuotedSpanRemainsInvalid() {
+    final EvidenceFixture fixture = stateWithEvidence();
+    final GeneratedDraft draft =
+        new GeneratedDraft(
+            "unsupported answer",
+            new com.medassist.agent.state.DraftMetadata("sha256:draft", 18, java.util.Map.of()),
+            validJson(fixture.chunkId(), ""));
+
+    final VerificationResult result = new StructuredDraftVerifier().verify(draft, fixture.state());
+
+    assertFalse(result.accepted());
+    assertTrue(result.retryable());
+    assertEquals(0, result.citationSummary().validCount());
+  }
+
+  @Test
   void emptyEvidenceRejectsBeforeGatewayCall() {
     final AgentState state =
         AgentState.start(
@@ -226,7 +291,7 @@ class LlmDraftPathTest {
     final UUID chunkId = UUID.randomUUID();
     final RuntimeSafetyEvidence evidence =
         new RuntimeSafetyEvidence(
-            List.of(new RuntimeEvidenceChunk(chunkId, "evidence sentence from a source")));
+            List.of(new RuntimeEvidenceChunk(chunkId, "evidence sentence - from a source.")));
     state.applyRoute(QueryClassification.CLINICAL, Set.of("clinical_search"), AgentNode.TOOL);
     state.applyToolResult(
         List.of(),
@@ -240,10 +305,7 @@ class LlmDraftPathTest {
         AgentState.start(
             RequestIds.create(), new DeidentifiedQuery("safe deidentified query"), Role.CLINICIAN);
     state.applyRoute(QueryClassification.CLINICAL, Set.of("clinical_search"), AgentNode.TOOL);
-    state.applyToolResult(
-        List.of(),
-        List.of(),
-        List.of(new SafeAggregationColumn("count", "4")));
+    state.applyToolResult(List.of(), List.of(), List.of(new SafeAggregationColumn("count", "4")));
     return new AggregateFixture(state);
   }
 

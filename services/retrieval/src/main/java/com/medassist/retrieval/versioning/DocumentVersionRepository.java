@@ -14,22 +14,17 @@ public class DocumentVersionRepository {
     this.jdbc = jdbc;
   }
 
-  public List<DocumentVersionView> history(final UUID documentId, final int stalenessYears) {
+  public List<DocumentVersionView> history(final UUID documentId) {
     return jdbc.query(
         """
         SELECT dv.id, dv.document_id, dv.version, dv.effective_date, dv.status,
-               dv.superseded_by, d.publisher,
-               CASE WHEN dv.effective_date IS NULL THEN false
-                    ELSE dv.effective_date < current_date - make_interval(years => :stalenessYears)
-               END AS stale
+               dv.superseded_by, d.publisher
           FROM document_version dv
           JOIN document d ON d.id = dv.document_id
          WHERE dv.document_id = :documentId
          ORDER BY dv.effective_date DESC NULLS LAST, dv.version DESC, dv.id
         """,
-        new MapSqlParameterSource()
-            .addValue("documentId", documentId)
-            .addValue("stalenessYears", stalenessYears),
+        new MapSqlParameterSource().addValue("documentId", documentId),
         (row, rowNumber) ->
             new DocumentVersionView(
                 row.getObject("id", UUID.class),
@@ -39,7 +34,7 @@ public class DocumentVersionRepository {
                 row.getString("status"),
                 row.getObject("superseded_by", UUID.class),
                 row.getString("publisher"),
-                row.getBoolean("stale")));
+                null));
   }
 
   public List<VersionChunk> chunks(

@@ -1,0 +1,6 @@
+parse_status: PARSE_STATUS_FAILED
+error {
+  code: "PDF_BACKEND_UNAVAILABLE"
+  message: "no PDF backend is configured"
+  attributes { key: "format" value: "pdf" }
+}

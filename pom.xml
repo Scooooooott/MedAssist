@@ -14,6 +14,7 @@
     <module>contracts</module>
     <module>shared/domain-model</module>
     <module>shared/common-lib</module>
+    <module>shared/audit-client</module>
     <module>services/gateway</module>
     <module>services/identity-policy</module>
     <module>services/ingestion</module>
@@ -29,6 +30,8 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>${java.version}</maven.compiler.release>
     <spring-boot.version>4.0.7</spring-boot.version>
+    <spring-cloud.version>2025.1.2</spring-cloud.version>
+    <resilience4j.version>2.4.0</resilience4j.version>
     <!-- Confirmed 2026-08-06: Spring AI 2.0.0 is GA and available from Maven Central. -->
     <spring-ai.version>2.0.0</spring-ai.version>
     <archunit.version>1.4.1</archunit.version>
@@ -43,13 +46,16 @@
     <maven-resources.version>3.3.1</maven-resources.version>
     <maven-site.version>3.12.1</maven-site.version>
     <maven-surefire.version>3.5.3</maven-surefire.version>
-    <protobuf.version>4.29.3</protobuf.version>
+    <native-build-tools.version>0.11.5</native-build-tools.version>
+    <protobuf.version>4.32.0</protobuf.version>
     <grpc.version>1.69.0</grpc.version>
+    <guava.version>33.3.1-jre</guava.version>
     <protobuf-maven-plugin.version>0.6.1</protobuf-maven-plugin.version>
     <os-maven-plugin.version>1.7.1</os-maven-plugin.version>
     <javax-annotation.version>1.3.2</javax-annotation.version>
     <error-prone-annotations.version>2.30.0</error-prone-annotations.version>
     <jsonschema-generator.version>5.0.0</jsonschema-generator.version>
+    <okio-jvm.version>3.16.1</okio-jvm.version>
   </properties>
 
   <!--
@@ -61,6 +67,13 @@
 
   <dependencyManagement>
     <dependencies>
+      <dependency>
+        <groupId>io.github.resilience4j</groupId>
+        <artifactId>resilience4j-bom</artifactId>
+        <version>${resilience4j.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
       <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-dependencies</artifactId>
@@ -76,6 +89,13 @@
         <scope>import</scope>
       </dependency>
       <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
         <groupId>com.tngtech.archunit</groupId>
         <artifactId>archunit-junit5</artifactId>
         <version>${archunit.version}</version>
@@ -85,6 +105,16 @@
         <groupId>com.google.protobuf</groupId>
         <artifactId>protobuf-java</artifactId>
         <version>${protobuf.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.grpc</groupId>
+        <artifactId>grpc-api</artifactId>
+        <version>${grpc.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>com.google.guava</groupId>
+        <artifactId>guava</artifactId>
+        <version>${guava.version}</version>
       </dependency>
       <dependency>
         <groupId>io.grpc</groupId>
@@ -111,6 +141,12 @@
         <artifactId>error_prone_annotations</artifactId>
         <version>${error-prone-annotations.version}</version>
       </dependency>
+      <!-- OTel's OkHttp 5 sender and MinIO's OkHttp 4 client share this runtime. -->
+      <dependency>
+        <groupId>com.squareup.okio</groupId>
+        <artifactId>okio-jvm</artifactId>
+        <version>${okio-jvm.version}</version>
+      </dependency>
       <dependency>
         <groupId>com.github.victools</groupId>
         <artifactId>jsonschema-generator</artifactId>
@@ -132,6 +168,11 @@
   <build>
     <pluginManagement>
       <plugins>
+        <plugin>
+          <groupId>org.graalvm.buildtools</groupId>
+          <artifactId>native-maven-plugin</artifactId>
+          <version>${native-build-tools.version}</version>
+        </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-clean-plugin</artifactId>

@@ -1,0 +1,3 @@
+metadata { trace_id: "deid-detect" request_id: "deid-detect" actor: "fixture-user" role: "CLINICIAN" }
+text: "alice@example.test"
+options { key: "locale" value: "en-US" }

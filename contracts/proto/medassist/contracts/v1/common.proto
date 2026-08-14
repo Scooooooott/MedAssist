@@ -19,6 +19,15 @@ message ErrorDetail {
   map<string, string> attributes = 3;
 }
 
+// User-visible degradation must use the same structured identity in the response,
+// trace, checkpoint/trajectory, audit event, and metrics dimensions.
+message Degradation {
+  string code = 1;
+  string affected_stage = 2;
+  string fallback_mode = 3;
+  string reason = 4;
+}
+
 message SourceRange {
   int64 start = 1;
   int64 end = 2;

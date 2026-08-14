@@ -1,0 +1,3 @@
+metadata { trace_id: "unsupported" request_id: "unsupported" actor: "fixture-user" role: "CLINICIAN" }
+storage_uri: "s3://medical-fixtures/report.bin"
+mime_type: "application/octet-stream"

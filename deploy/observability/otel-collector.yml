@@ -1,0 +1,157 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 384
+    spike_limit_mib: 96
+  redaction/phi_allowlist:
+    allow_all_keys: false
+    allowed_keys:
+      - app.role
+      - batch.size
+      - client.address
+      - db.system.name
+      - degradation.code
+      - degradation.fallback_mode
+      - degradation.stage
+      - error.type
+      - exception.type
+      - gen_ai.operation.name
+      - gen_ai.provider.name
+      - gen_ai.request.model
+      - gen_ai.usage.input_tokens
+      - gen_ai.usage.output_tokens
+      - http.request.method
+      - http.response.status_code
+      - http.route
+      - model.name
+      - network.protocol.name
+      - network.protocol.version
+      - outcome
+      - process.model
+      - queue.capacity
+      - queue.name
+      - retrieval.mode
+      - retrieval.result_count
+      - rpc.grpc.status_code
+      - rpc.method
+      - rpc.service
+      - rpc.system
+      - server.address
+      - server.port
+      - session.state
+      - url.scheme
+      - worker.count
+      - workload
+    blocked_key_patterns:
+      - '(?i).*(authorization|cookie|token|secret|password|query|prompt|content|document|chunk|patient|user\.id|session\.id).*'
+    blocked_values:
+      - '(?i).*bearer\s+[a-z0-9._~+/=-]+.*'
+    summary: silent
+  transform/resource_allowlist:
+    error_mode: propagate
+    trace_statements:
+      - 'keep_keys(resource.attributes, ["service.name", "service.namespace", "service.version", "deployment.environment.name", "telemetry.sdk.language", "telemetry.sdk.name", "telemetry.sdk.version", "process.runtime.name", "process.runtime.version"])'
+      - 'keep_keys(spanevent.attributes, ["exception.type"])'
+  tail_sampling:
+    decision_wait: 10s
+    num_traces: 10000
+    expected_new_traces_per_sec: 100
+    maximum_trace_size_bytes: 1048576
+    decision_cache:
+      sampled_cache_size: 100000
+      non_sampled_cache_size: 100000
+    policies:
+      - name: errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: slow-requests
+        type: latency
+        latency:
+          threshold_ms: 1000
+      - name: baseline
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: ${env:MEDASSIST_TRACE_BASELINE_PERCENT}
+  batch:
+    send_batch_size: 1024
+    timeout: 2s
+
+connectors:
+  span_metrics:
+    namespace: medassist.span
+    add_resource_attributes: true
+    histogram:
+      unit: ms
+      explicit:
+        buckets: [5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s, 2s, 5s, 10s]
+    dimensions:
+      - name: degradation.code
+        default: none
+      - name: degradation.stage
+        default: none
+      - name: degradation.fallback_mode
+        default: none
+      - name: outcome
+        default: unknown
+    exemplars:
+      enabled: true
+      max_per_data_point: 5
+    aggregation_cardinality_limit: 5000
+    metrics_flush_interval: 15s
+    metrics_expiration: 10m
+    series_expiration: 10m
+    resource_metrics_key_attributes:
+      - service.name
+      - telemetry.sdk.language
+
+exporters:
+  otlp/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+    sending_queue:
+      enabled: true
+      queue_size: 2048
+    retry_on_failure:
+      enabled: true
+      initial_interval: 1s
+      max_interval: 10s
+      max_elapsed_time: 60s
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    enable_open_metrics: true
+    resource_to_telemetry_conversion:
+      enabled: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  telemetry:
+    metrics:
+      readers:
+        - pull:
+            exporter:
+              prometheus:
+                host: 0.0.0.0
+                port: 8888
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, redaction/phi_allowlist, transform/resource_allowlist, tail_sampling, batch]
+      exporters: [otlp/tempo, span_metrics]
+    metrics/span-derived:
+      receivers: [span_metrics]
+      processors: [memory_limiter, batch]
+      exporters: [prometheus]

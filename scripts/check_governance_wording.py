@@ -12,9 +12,9 @@ def forbidden_phrases() -> tuple[str, ...]:
     return (
         "HIPAA " + "compliant",
         "HIPAA-" + "compliant",
-        "符合 " + "HIPAA",
-        "临床决策" + "支持",
-        "诊断" + "建议",
+        "\u7ed7\ufe40\u608e " + "HIPAA",
+        "\u6d93\u6751\u7c25\u9350\u5d07\u74e5" + "\u93c0\ue21b\u5bd4",
+        "\u7487\u5a43\u67c7" + "\u5be4\u9e3f\ue185",
     )
 
 

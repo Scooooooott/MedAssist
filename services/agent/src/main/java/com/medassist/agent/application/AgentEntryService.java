@@ -9,8 +9,9 @@ import com.medassist.agent.state.AgentState;
 import com.medassist.agent.state.CitationSummary;
 import com.medassist.agent.state.TerminationReason;
 import com.medassist.common.RequestIds;
+import com.medassist.common.context.AuthenticatedRequestContext;
+import com.medassist.common.context.ExecutionContext;
 import com.medassist.domain.Role;
-import java.util.Locale;
 import java.util.Objects;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,24 +42,25 @@ public class AgentEntryService {
     return new InMemoryChatMemory(defaults.maxMessages(), defaults.maxCharacters());
   }
 
-  public AgentResponse execute(final AgentRequest request) {
+  /** Executes an authenticated HTTP request using identity and correlation IDs from context. */
+  public AgentResponse execute(final AgentRequest request, final ExecutionContext context) {
+    Objects.requireNonNull(context, "context");
+    return execute(
+        request,
+        AuthenticatedRequestContext.requireSingleRole(context),
+        AuthenticatedRequestContext.requireRequestIds(context));
+  }
+
+  /**
+   * Executes an already-authorized internal request. HTTP adapters must use the context overload.
+   */
+  public AgentResponse execute(final AgentRequest request, final Role role) {
+    return execute(request, role, RequestIds.create());
+  }
+
+  private AgentResponse execute(
+      final AgentRequest request, final Role role, final RequestIds requestIds) {
     Objects.requireNonNull(request, "request");
-    final RequestIds requestIds = RequestIds.create();
-    final Role role;
-    try {
-      role = parseRole(request.role());
-    } catch (final IllegalArgumentException exception) {
-      return new AgentResponse(
-          requestIds.traceId(),
-          requestIds.requestId(),
-          null,
-          true,
-          "The supplied role is not authorized.",
-          null,
-          null,
-          CitationSummary.empty(),
-          TerminationReason.ABSTAINED);
-    }
     final DeidentifiedQuery deidentifiedQuery;
     try {
       deidentifiedQuery =
@@ -77,7 +79,8 @@ public class AgentEntryService {
           CitationSummary.empty(),
           TerminationReason.DEIDENTIFICATION_FAILED);
     }
-    final AgentState state = AgentState.start(requestIds, deidentifiedQuery, role);
+    final AgentState state =
+        AgentState.start(requestIds, deidentifiedQuery, role, request.retrievalFilters());
     final String conversationId =
         request.conversationId() == null || request.conversationId().isBlank()
             ? requestIds.traceId()
@@ -99,17 +102,6 @@ public class AgentEntryService {
         result.state().draftMetadata(),
         result.state().citationSummary(),
         terminationReason);
-  }
-
-  private Role parseRole(final String value) {
-    if (value == null || value.isBlank()) {
-      return Role.CLINICIAN;
-    }
-    try {
-      return Role.valueOf(value.toUpperCase(Locale.ROOT));
-    } catch (final IllegalArgumentException exception) {
-      throw new IllegalArgumentException("unsupported role", exception);
-    }
   }
 
   private String abstainReason(final TerminationReason reason) {

@@ -1,6 +1,5 @@
 package com.medassist.retrieval.versioning;
 
-import com.medassist.retrieval.config.RetrievalProperties;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,22 +11,15 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/documents/{documentId}/versions")
 public final class DocumentVersionController {
-  private final DocumentVersionRepository repository;
-  private final ChunkVersionDiffer differ;
-  private final RetrievalProperties properties;
+  private final DocumentVersionService service;
 
-  public DocumentVersionController(
-      final DocumentVersionRepository repository,
-      final ChunkVersionDiffer differ,
-      final RetrievalProperties properties) {
-    this.repository = repository;
-    this.differ = differ;
-    this.properties = properties;
+  public DocumentVersionController(final DocumentVersionService service) {
+    this.service = service;
   }
 
   @GetMapping
   public List<DocumentVersionView> history(@PathVariable final UUID documentId) {
-    return repository.history(documentId, properties.getStalenessYears());
+    return service.history(documentId);
   }
 
   @GetMapping("/diff")
@@ -36,16 +28,6 @@ public final class DocumentVersionController {
       @RequestParam final UUID from,
       @RequestParam final UUID to,
       @RequestParam(required = false) final String chunkingStrategyId) {
-    final String effectiveStrategy =
-        chunkingStrategyId == null || chunkingStrategyId.isBlank()
-            ? properties.getDefaultChunkingStrategyId()
-            : chunkingStrategyId.trim();
-    return new VersionDiffResponse(
-        documentId,
-        from,
-        to,
-        differ.diff(
-            repository.chunks(documentId, from, effectiveStrategy),
-            repository.chunks(documentId, to, effectiveStrategy)));
+    return service.diff(documentId, from, to, chunkingStrategyId);
   }
 }

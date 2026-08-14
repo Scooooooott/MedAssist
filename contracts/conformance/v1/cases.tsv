@@ -1,0 +1,41 @@
+contract	rpc	id	category	boundaries	grpc_status	error_code	request	response	trigger
+parser	ParseDocument	normal-full	normal		OK		parser/normal.request.textproto	parser/normal.response.textproto	typical stored document
+parser	ParseDocument	empty-input	boundary	empty_input	OK	INVALID_ARGUMENT	parser/empty.request.textproto	parser/invalid-argument.response.textproto	missing storage_uri
+parser	ParseDocument	long-input	boundary	long_input	OK		parser/long.request.textproto	parser/simple-success.response.textproto	long storage URI remains wire-safe
+parser	ParseDocument	unary-special	boundary	batch_limit|special_characters	OK		parser/special.request.textproto	parser/simple-success.response.textproto	unary limit and Unicode metadata
+parser	ParseDocument	invalid-storage-uri	error		OK	INVALID_STORAGE_URI	parser/invalid-storage.request.textproto	parser/invalid-storage-uri.response.textproto	unsupported object URI scheme
+parser	ParseDocument	storage-backend-unavailable	error		OK	STORAGE_BACKEND_UNAVAILABLE	parser/normal.request.textproto	parser/storage-backend-unavailable.response.textproto	object-store client is unavailable
+parser	ParseDocument	storage-read-failed	error		OK	STORAGE_READ_FAILED	parser/normal.request.textproto	parser/storage-read-failed.response.textproto	object-store read fails
+parser	ParseDocument	storage-object-empty	error		OK	STORAGE_OBJECT_EMPTY	parser/normal.request.textproto	parser/storage-object-empty.response.textproto	object-store payload is empty
+parser	ParseDocument	unsupported-format	error		OK	UNSUPPORTED_FORMAT	parser/unsupported.request.textproto	parser/unsupported-format.response.textproto	MIME type or suffix is unsupported
+parser	ParseDocument	pdf-backend-unavailable	error		OK	PDF_BACKEND_UNAVAILABLE	parser/pdf.request.textproto	parser/pdf-backend-unavailable.response.textproto	PDF backend is not configured
+parser	ParseDocument	pdf-parse-timeout	error		OK	PDF_PARSE_TIMEOUT	parser/pdf.request.textproto	parser/pdf-parse-timeout.response.textproto	PDF parsing exceeds its deadline
+parser	ParseDocument	pdf-parse-failed	error		OK	PDF_PARSE_FAILED	parser/pdf.request.textproto	parser/pdf-parse-failed.response.textproto	PDF backend rejects the payload
+parser	ParseDocument	parse-failed	error		OK	PARSE_FAILED	parser/normal.request.textproto	parser/parse-failed.response.textproto	parser produces no content
+parser	ParseDocument	parse-partial	error		OK	PARSE_PARTIAL	parser/normal.request.textproto	parser/parse-partial.response.textproto	parser returns content with warnings
+parser	ParseDocument	resource-exhausted	error		OK	RESOURCE_EXHAUSTED	parser/normal.request.textproto	parser/resource-exhausted.response.textproto	bounded parser queue is full
+deid	Detect	detect-normal	normal		OK		deid/detect-normal.request.textproto	deid/detect-normal.response.textproto	typical PHI detection
+deid	Anonymize	anonymize-normal	normal		OK		deid/anonymize-normal.request.textproto	deid/anonymize-normal.response.textproto	typical Safe Harbor redaction
+deid	Detect	empty-input	boundary	empty_input	OK		deid/empty.request.textproto	deid/empty.response.textproto	empty text has an empty entity list
+deid	Detect	long-input	boundary	long_input	OK		deid/long.request.textproto	deid/long.response.textproto	long text remains wire-safe
+deid	Anonymize	unary-special	boundary	batch_limit|special_characters	OK		deid/special.request.textproto	deid/special.response.textproto	unary limit and Unicode text
+deid	Anonymize	invalid-argument	error		INVALID_ARGUMENT	INVALID_ARGUMENT	deid/invalid-policy.request.textproto	-	policy enum is unsupported
+deid	Detect	failed-precondition	error		FAILED_PRECONDITION	FAILED_PRECONDITION	deid/detect-normal.request.textproto	-	de-identification backend is not ready
+deid	Detect	internal	error		INTERNAL	INTERNAL	deid/detect-normal.request.textproto	-	backend raises a safe internal failure
+deid	Detect	resource-exhausted	error		RESOURCE_EXHAUSTED	RESOURCE_EXHAUSTED	deid/detect-normal.request.textproto	-	bounded online queue is full
+embedding	Embed	normal-full	normal		OK		embedding/normal.request.textproto	embedding/normal.response.textproto	typical query embedding
+embedding	Embed	empty-input	boundary	empty_input	OK		embedding/empty.request.textproto	embedding/empty.response.textproto	empty text batch preserves response metadata
+embedding	Embed	long-input	boundary	long_input	OK		embedding/long.request.textproto	embedding/single.response.textproto	long text remains wire-safe
+embedding	Embed	batch-special	boundary	batch_limit|special_characters	OK		embedding/batch-special.request.textproto	embedding/batch-special.response.textproto	configured batch boundary with Unicode text
+embedding	Embed	invalid-argument	error		INVALID_ARGUMENT	INVALID_ARGUMENT	embedding/invalid.request.textproto	-	input type is unspecified
+embedding	Embed	failed-precondition	error		FAILED_PRECONDITION	FAILED_PRECONDITION	embedding/normal.request.textproto	-	selected model is not serving
+embedding	Embed	internal	error		INTERNAL	INTERNAL	embedding/normal.request.textproto	-	backend returns invalid vector shape
+embedding	Embed	resource-exhausted	error		RESOURCE_EXHAUSTED	RESOURCE_EXHAUSTED	embedding/normal.request.textproto	-	bounded inference queue is full
+rerank	Rerank	normal-full	normal		OK		rerank/normal.request.textproto	rerank/normal.response.textproto	typical candidate reranking
+rerank	Rerank	empty-input	boundary	empty_input	INVALID_ARGUMENT	INVALID_ARGUMENT	rerank/empty.request.textproto	-	empty query is rejected
+rerank	Rerank	long-input	boundary	long_input	OK		rerank/long.request.textproto	rerank/single.response.textproto	long query remains wire-safe
+rerank	Rerank	batch-special	boundary	batch_limit|special_characters	OK		rerank/batch-special.request.textproto	rerank/batch-special.response.textproto	configured candidate cap with Unicode text
+rerank	Rerank	failed-precondition	error		FAILED_PRECONDITION	FAILED_PRECONDITION	rerank/normal.request.textproto	-	reranker is not ready
+rerank	Rerank	internal	error		INTERNAL	INTERNAL	rerank/normal.request.textproto	-	reranker returns an invalid score set
+rerank	Rerank	resource-exhausted	error		RESOURCE_EXHAUSTED	RESOURCE_EXHAUSTED	rerank/normal.request.textproto	-	bounded inference queue is full
+rerank	Rerank	unimplemented	error		UNIMPLEMENTED	UNIMPLEMENTED	rerank/normal.request.textproto	-	reranker backend is disabled

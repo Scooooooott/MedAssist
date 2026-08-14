@@ -25,4 +25,20 @@ public record AnswerRequest(
       final String modelVersion) {
     this(query, topK, filters, role, modelName, modelVersion, null, null, null, null, null, null);
   }
+
+  public AnswerRequest withRole(final String authenticatedRole) {
+    return new AnswerRequest(
+        query,
+        topK,
+        filters,
+        authenticatedRole,
+        modelName,
+        modelVersion,
+        retrievalMode,
+        rerankEnabled,
+        includeSuperseded,
+        contextualRetrievalMode,
+        chunkingStrategyId,
+        candidateTopN);
+  }
 }

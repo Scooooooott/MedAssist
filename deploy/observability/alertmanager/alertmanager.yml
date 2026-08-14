@@ -1,0 +1,29 @@
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: demo-webhook
+  group_by: [alertname, severity, class]
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 4h
+  routes:
+    - matchers: ['severity="critical"']
+      receiver: compliance-demo-webhook
+      group_wait: 0s
+      repeat_interval: 15m
+
+receivers:
+  - name: demo-webhook
+    webhook_configs:
+      - url: http://alert-webhook:8080/alerts/operations
+        send_resolved: true
+  - name: compliance-demo-webhook
+    webhook_configs:
+      - url: http://alert-webhook:8080/alerts/compliance
+        send_resolved: true
+
+inhibit_rules:
+  - source_matchers: ['severity="critical"']
+    target_matchers: ['severity=~"warning|high"']
+    equal: [alertname]

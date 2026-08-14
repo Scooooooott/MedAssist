@@ -29,6 +29,7 @@ public class RetrievalProperties {
   private ContextualRetrievalMode defaultContextualRetrievalMode = ContextualRetrievalMode.OFF;
   private String defaultChunkingStrategyId = "structure-v1";
   private int stalenessYears = 3;
+  private boolean legacyAnswerEnabled;
   private ModelService modelService = new ModelService();
   private Llm llm = new Llm();
   private Rerank rerank = new Rerank();
@@ -195,6 +196,14 @@ public class RetrievalProperties {
 
   public void setStalenessYears(final int stalenessYears) {
     this.stalenessYears = stalenessYears;
+  }
+
+  public boolean isLegacyAnswerEnabled() {
+    return legacyAnswerEnabled;
+  }
+
+  public void setLegacyAnswerEnabled(final boolean legacyAnswerEnabled) {
+    this.legacyAnswerEnabled = legacyAnswerEnabled;
   }
 
   public ModelService getModelService() {

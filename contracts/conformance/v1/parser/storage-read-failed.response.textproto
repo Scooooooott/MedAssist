@@ -1,0 +1,6 @@
+parse_status: PARSE_STATUS_FAILED
+error {
+  code: "STORAGE_READ_FAILED"
+  message: "unable to read the storage object"
+  attributes { key: "retryable" value: "true" }
+}

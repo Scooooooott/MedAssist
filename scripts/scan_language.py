@@ -32,20 +32,25 @@ EXCLUDED_PARTS = {
     ".mypy_cache",
     "node_modules",
     "coverage",
-    "frontend/dist",
     "target",
     "__pycache__",
     "data",
-    "docs/internal",
+    "doc",
+}
+EXCLUDED_PREFIXES = {
+    ("frontend", "dist"),
+    ("docs", "internal"),
 }
 EXCLUDED_FILES = {"REQUIREMENTS-FULL.md"}
 
 
 def is_excluded(path: Path) -> bool:
-    relative = path.relative_to(ROOT).as_posix()
+    relative_parts = path.relative_to(ROOT).parts
     if path.name in EXCLUDED_FILES:
         return True
-    return any(part in relative for part in EXCLUDED_PARTS)
+    if any(part in EXCLUDED_PARTS for part in relative_parts):
+        return True
+    return any(relative_parts[: len(prefix)] == prefix for prefix in EXCLUDED_PREFIXES)
 
 
 def scan_files() -> list[tuple[str, int, str]]:

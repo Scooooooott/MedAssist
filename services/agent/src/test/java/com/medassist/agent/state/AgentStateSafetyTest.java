@@ -32,7 +32,7 @@ class AgentStateSafetyTest {
         new AgentEntryService(
             ignored -> new DeidentifiedQuery("Person [REDACTED] has phone [REDACTED]"), engine);
 
-    service.execute(new AgentRequest(rawQuery, "CLINICIAN"));
+    service.execute(new AgentRequest(rawQuery), Role.CLINICIAN);
 
     assertFalse(captured.get().deidentifiedQuery().contains(rawQuery));
     assertFalse(objectMapper.writeValueAsString(captured.get().projection()).contains(rawQuery));

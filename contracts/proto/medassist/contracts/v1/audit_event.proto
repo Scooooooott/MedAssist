@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package medassist.contracts.v1;
+
+option java_multiple_files = true;
+option java_package = "com.medassist.contracts.v1";
+option java_outer_classname = "AuditEventProto";
+
+// Metadata-only event transported before the audit consumer assigns chain fields.
+message AuditEventEnvelope {
+  uint32 schema_version = 1;
+  string event_id = 2;
+  int64 occurred_at_epoch_seconds = 3;
+  int32 occurred_at_nanos = 4;
+  string actor = 5;
+  AuditCategory category = 6;
+  string role = 7;
+  string action = 8;
+  string resource_type = 9;
+  string resource_id = 10;
+  string outcome = 11;
+  map<string, string> safe_metadata = 12;
+  string safe_metadata_sha256 = 13;
+}
+
+enum AuditCategory {
+  AUDIT_CATEGORY_UNSPECIFIED = 0;
+  AUDIT_CATEGORY_AUTHENTICATION = 1;
+  AUDIT_CATEGORY_AUTHORIZATION = 2;
+  AUDIT_CATEGORY_DATA_ACCESS = 3;
+  AUDIT_CATEGORY_PHI_SAFETY = 4;
+  AUDIT_CATEGORY_GOVERNANCE = 5;
+  AUDIT_CATEGORY_SYSTEM = 6;
+}

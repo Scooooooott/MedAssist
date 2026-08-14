@@ -23,12 +23,19 @@ document text.
 
 ## Concurrency Model
 
-The service runs as a single process with a synchronous gRPC server. It does not
-use asyncio for request handling. Worker threads and maximum concurrent RPCs
-are configured through the shared `MEDASSIST_GRPC_WORKERS` and
-`MEDASSIST_GRPC_MAX_CONCURRENT_RPCS` settings. Current values remain
-conservative placeholders. Final tuning belongs to M5.11 after parser workload
-measurements are available.
+The service uses synchronous gRPC plus a bounded offline worker pool; it does
+not use asyncio. Defaults are four gRPC threads, four concurrent RPCs, two
+parser workers, and eight queued documents. Configure them through
+`MEDASSIST_GRPC_WORKERS`, `MEDASSIST_GRPC_MAX_CONCURRENT_RPCS`,
+`MEDASSIST_WORKER_THREADS`, and `MEDASSIST_WORK_QUEUE_CAPACITY`. Native runtime
+limits are explicit through `MEDASSIST_RUNTIME_INTRA_OP_THREADS=1` and
+`MEDASSIST_RUNTIME_INTER_OP_THREADS=1`. Prometheus metrics use
+`MEDASSIST_METRICS_PORT=9101` unless disabled with zero.
+
+When capacity is exhausted, `ParseDocument` returns a failed response with
+`RESOURCE_EXHAUSTED` and `retryable=true`. Readiness includes the worker pool.
+The process topology and defaults are executable starting points and are **NOT
+MEASURED** against Docling or the 50-page acceptance workload.
 
 ## Production acceptance
 

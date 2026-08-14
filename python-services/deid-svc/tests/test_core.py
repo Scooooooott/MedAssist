@@ -1,4 +1,5 @@
 import pytest
+
 from deid_svc.core import (
     DeidError,
     DeidInitializationError,

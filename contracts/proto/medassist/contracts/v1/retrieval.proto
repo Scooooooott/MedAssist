@@ -64,6 +64,7 @@ message SearchResponse {
   bool rerank_enabled = 11;
   bool degraded = 12;
   repeated string degradation_reasons = 13;
+  repeated Degradation degradations = 14;
 }
 
 message RetrievalResult {

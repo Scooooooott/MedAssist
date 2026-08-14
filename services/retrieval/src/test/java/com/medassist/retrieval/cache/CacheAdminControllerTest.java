@@ -40,7 +40,11 @@ class CacheAdminControllerTest {
     final RetrievalProperties properties = properties("");
 
     org.assertj.core.api.Assertions.assertThatThrownBy(
-            () -> new CacheAdminController(mock(AnswerResponseCache.class), mock(CachingQueryEmbeddingClient.class), properties))
+            () ->
+                new CacheAdminController(
+                    mock(AnswerResponseCache.class),
+                    mock(CachingQueryEmbeddingClient.class),
+                    properties))
         .isInstanceOf(IllegalStateException.class)
         .hasMessageContaining("MEDASSIST_CACHE_ADMIN_TOKEN");
   }

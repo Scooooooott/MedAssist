@@ -1,0 +1,3 @@
+metadata { trace_id: "embed-empty" request_id: "embed-empty" actor: "fixture-user" role: "CLINICIAN" }
+model_name: "fixture-embed@v1"
+input_type: EMBEDDING_INPUT_TYPE_QUERY

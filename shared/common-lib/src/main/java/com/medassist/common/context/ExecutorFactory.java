@@ -3,6 +3,7 @@ package com.medassist.common.context;
 import java.util.Objects;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -20,6 +21,18 @@ public final class ExecutorFactory {
   public static ExecutorService newSingleThreadExecutor(final String threadNamePrefix) {
     return newContextAwareExecutor(
         Executors.newSingleThreadExecutor(namedThreadFactory(threadNamePrefix)));
+  }
+
+  public static ScheduledExecutorService newSingleThreadScheduledExecutor(
+      final String threadNamePrefix) {
+    return new ContextAwareScheduledExecutorService(
+        Executors.newSingleThreadScheduledExecutor(namedThreadFactory(threadNamePrefix)),
+        new ContextTaskDecorator());
+  }
+
+  /** Creates one virtual thread per task; concurrency must be bounded at each downstream call. */
+  public static ExecutorService newVirtualThreadPerTaskExecutor() {
+    return newContextAwareExecutor(Executors.newVirtualThreadPerTaskExecutor());
   }
 
   private static ExecutorService newContextAwareExecutor(final ExecutorService delegate) {

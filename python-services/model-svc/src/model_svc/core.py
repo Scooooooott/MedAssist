@@ -117,6 +117,8 @@ class OnnxBgeM3Backend:
         quantization: str = "int8",
         query_prefix: str = "",
         passage_prefix: str = "",
+        intra_op_threads: int = 1,
+        inter_op_threads: int = 1,
     ) -> None:
         if dimension < 1:
             raise ValueError("dimension must be positive")
@@ -126,6 +128,8 @@ class OnnxBgeM3Backend:
             raise ValueError("batch_size must be positive")
         if quantization.lower() != "int8":
             raise ValueError("the production backend only supports int8 ONNX models")
+        if intra_op_threads < 1 or inter_op_threads < 1:
+            raise ValueError("ONNX runtime thread counts must be positive")
 
         self.model_path = Path(model_path) if model_path else None
         self.tokenizer_path = Path(tokenizer_path) if tokenizer_path else None
@@ -137,6 +141,8 @@ class OnnxBgeM3Backend:
         self.quantization = quantization.lower()
         self.query_prefix = query_prefix
         self.passage_prefix = passage_prefix
+        self.intra_op_threads = intra_op_threads
+        self.inter_op_threads = inter_op_threads
         self._session: Any | None = None
         self._tokenizer: Any | None = None
         self._not_ready_reason: str | None = "warmup has not completed"
@@ -175,8 +181,12 @@ class OnnxBgeM3Backend:
             import onnxruntime as ort  # type: ignore[import-untyped]
             from tokenizers import Tokenizer  # type: ignore[import-untyped]
 
+            session_options = ort.SessionOptions()
+            session_options.intra_op_num_threads = self.intra_op_threads
+            session_options.inter_op_num_threads = self.inter_op_threads
             session = ort.InferenceSession(
                 str(self.model_path),
+                sess_options=session_options,
                 providers=["CPUExecutionProvider"],
             )
             tokenizer = Tokenizer.from_file(str(self.tokenizer_path))
@@ -330,17 +340,23 @@ class OnnxCrossEncoderReranker:
         model_version: str,
         max_length: int = 512,
         batch_size: int = 8,
+        intra_op_threads: int = 1,
+        inter_op_threads: int = 1,
     ) -> None:
         if not 1 <= max_length <= 1024:
             raise ValueError("max_length must be between 1 and 1024")
         if batch_size < 1:
             raise ValueError("batch_size must be positive")
+        if intra_op_threads < 1 or inter_op_threads < 1:
+            raise ValueError("ONNX runtime thread counts must be positive")
         self.model_path = Path(model_path) if model_path else None
         self.tokenizer_path = Path(tokenizer_path) if tokenizer_path else None
         self.model_name = model_name
         self.model_version = model_version
         self.max_length = max_length
         self.batch_size = batch_size
+        self.intra_op_threads = intra_op_threads
+        self.inter_op_threads = inter_op_threads
         self._session: Any | None = None
         self._tokenizer: Any | None = None
         self._not_ready_reason: str | None = "warmup has not completed"
@@ -378,8 +394,12 @@ class OnnxCrossEncoderReranker:
             import onnxruntime as ort
             from tokenizers import Tokenizer
 
+            session_options = ort.SessionOptions()
+            session_options.intra_op_num_threads = self.intra_op_threads
+            session_options.inter_op_num_threads = self.inter_op_threads
             session = ort.InferenceSession(
                 str(self.model_path),
+                sess_options=session_options,
                 providers=["CPUExecutionProvider"],
             )
             tokenizer = Tokenizer.from_file(str(self.tokenizer_path))

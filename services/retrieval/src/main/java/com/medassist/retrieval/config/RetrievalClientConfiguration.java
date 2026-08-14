@@ -1,6 +1,8 @@
 package com.medassist.retrieval.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.medassist.common.context.ExecutorFactory;
+import com.medassist.common.resilience.ResilienceExecutor;
 import com.medassist.retrieval.cache.CacheKeyFactory;
 import com.medassist.retrieval.cache.CacheMetrics;
 import com.medassist.retrieval.cache.CachingQueryEmbeddingClient;
@@ -11,7 +13,6 @@ import com.medassist.retrieval.model.QueryEmbedding;
 import com.medassist.retrieval.rerank.GrpcRerankClient;
 import com.medassist.retrieval.rerank.RerankingService;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
@@ -55,12 +56,13 @@ public class RetrievalClientConfiguration {
   }
 
   @Bean
-  RerankingService rerankingService(final GrpcRerankClient client) {
-    return new RerankingService(client);
+  RerankingService rerankingService(
+      final GrpcRerankClient client, final ResilienceExecutor resilienceExecutor) {
+    return new RerankingService(client, resilienceExecutor);
   }
 
   @Bean(destroyMethod = "shutdown")
   ExecutorService retrievalExecutor() {
-    return Executors.newFixedThreadPool(4);
+    return ExecutorFactory.newVirtualThreadPerTaskExecutor();
   }
 }

@@ -1,0 +1,6 @@
+metadata { trace_id: "embed-batch" request_id: "embed-batch" actor: "fixture-user" role: "CLINICIAN" }
+texts: "Jos\u00e9"
+texts: "\u5c71\u7530"
+texts: "line1\nline2\t\u2713"
+model_name: "fixture-embed@v1"
+input_type: EMBEDDING_INPUT_TYPE_PASSAGE

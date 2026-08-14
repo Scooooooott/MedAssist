@@ -2,6 +2,8 @@ package com.medassist.agent.config;
 
 import com.medassist.agent.application.GrpcQueryDeidentifier;
 import com.medassist.agent.application.QueryDeidentifier;
+import com.medassist.common.resilience.ResilienceExecutor;
+import com.medassist.common.tracing.TraceContextClientInterceptor;
 import com.medassist.contracts.v1.DeidServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -17,7 +19,10 @@ import org.springframework.context.annotation.Configuration;
 public class AgentGrpcClientConfiguration {
   @Bean(name = "agentDeidGrpcChannel", destroyMethod = "shutdown")
   ManagedChannel agentDeidGrpcChannel(final DeidProperties properties) {
-    return ManagedChannelBuilder.forTarget(properties.endpoint()).usePlaintext().build();
+    return ManagedChannelBuilder.forTarget(properties.endpoint())
+        .usePlaintext()
+        .intercept(new TraceContextClientInterceptor())
+        .build();
   }
 
   @Bean
@@ -28,7 +33,9 @@ public class AgentGrpcClientConfiguration {
 
   @Bean
   QueryDeidentifier grpcQueryDeidentifier(
-      final DeidServiceGrpc.DeidServiceBlockingStub stub, final DeidProperties properties) {
-    return new GrpcQueryDeidentifier(stub, properties);
+      final DeidServiceGrpc.DeidServiceBlockingStub stub,
+      final DeidProperties properties,
+      final ResilienceExecutor resilienceExecutor) {
+    return new GrpcQueryDeidentifier(stub, properties, resilienceExecutor);
   }
 }

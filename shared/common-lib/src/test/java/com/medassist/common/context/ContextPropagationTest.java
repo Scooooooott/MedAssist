@@ -122,6 +122,23 @@ class ContextPropagationTest {
   }
 
   @Test
+  void propagatesOpenTelemetryContextAcrossAsyncBoundary() throws Exception {
+    final ExecutorService executor = ExecutorFactory.newVirtualThreadPerTaskExecutor();
+    final io.opentelemetry.context.ContextKey<String> key =
+        io.opentelemetry.context.ContextKey.named("test-trace-context");
+    ContextCarrier.restore(context("subject-a"));
+    try (io.opentelemetry.context.Scope ignored =
+        io.opentelemetry.context.Context.current().with(key, "trace-value").makeCurrent()) {
+      assertEquals(
+          "trace-value",
+          executor.submit(() -> io.opentelemetry.context.Context.current().get(key)).get());
+    } finally {
+      executor.shutdownNow();
+      executor.awaitTermination(5, TimeUnit.SECONDS);
+    }
+  }
+
+  @Test
   void requireCurrentFailsClosedWhenIdentityIsMissing() {
     final MissingExecutionContextException failure =
         assertThrows(MissingExecutionContextException.class, ContextCarrier::requireCurrent);

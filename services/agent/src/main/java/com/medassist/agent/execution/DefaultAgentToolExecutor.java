@@ -6,6 +6,8 @@ import com.medassist.agent.state.AgentNode;
 import com.medassist.agent.state.AgentState;
 import com.medassist.agent.state.ChunkCandidateMetadata;
 import com.medassist.agent.state.ToolCallRecord;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -14,7 +16,6 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -22,14 +23,16 @@ import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 /** Executes role-scoped tools and projects every backend result before state mutation. */
 public final class DefaultAgentToolExecutor implements AgentToolExecutor {
   private static final int DEFAULT_TOP_K = 10;
+  private static final int RETRY_TOP_K_INCREMENT = 10;
   private static final Duration DEFAULT_PER_CALL_TIMEOUT = Duration.ofMillis(500);
+  private static final Executor DIRECT_EXECUTOR = Runnable::run;
   private static final Set<String> MIXED_SEARCH_TOOLS =
       Set.of(DefaultToolRegistry.POLICY_SEARCH, DefaultToolRegistry.CLINICAL_SEARCH);
 
@@ -38,18 +41,19 @@ public final class DefaultAgentToolExecutor implements AgentToolExecutor {
   private final ToolBackend structuredQueryBackend;
   private final Duration perCallTimeout;
   private final Executor executor;
+  private final Semaphore bulkhead;
+  private final Counter unauthorizedToolAccess;
 
   public DefaultAgentToolExecutor() {
-    this(
-        new DefaultToolRegistry(), null, null, DEFAULT_PER_CALL_TIMEOUT, ForkJoinPool.commonPool());
+    this(new DefaultToolRegistry(), null, null, DEFAULT_PER_CALL_TIMEOUT, DIRECT_EXECUTOR);
   }
 
   public DefaultAgentToolExecutor(final ToolRegistry toolRegistry) {
-    this(toolRegistry, null, null, DEFAULT_PER_CALL_TIMEOUT, ForkJoinPool.commonPool());
+    this(toolRegistry, null, null, DEFAULT_PER_CALL_TIMEOUT, DIRECT_EXECUTOR);
   }
 
   public DefaultAgentToolExecutor(final ToolRegistry toolRegistry, final ToolBackend backend) {
-    this(toolRegistry, backend, null, DEFAULT_PER_CALL_TIMEOUT, ForkJoinPool.commonPool());
+    this(toolRegistry, backend, null, DEFAULT_PER_CALL_TIMEOUT, DIRECT_EXECUTOR);
   }
 
   public DefaultAgentToolExecutor(
@@ -58,11 +62,47 @@ public final class DefaultAgentToolExecutor implements AgentToolExecutor {
       final ToolBackend structuredQueryBackend,
       final Duration perCallTimeout,
       final Executor executor) {
+    this(toolRegistry, backend, structuredQueryBackend, perCallTimeout, executor, 64);
+  }
+
+  public DefaultAgentToolExecutor(
+      final ToolRegistry toolRegistry,
+      final ToolBackend backend,
+      final ToolBackend structuredQueryBackend,
+      final Duration perCallTimeout,
+      final Executor executor,
+      final int maxConcurrentCalls) {
+    this(
+        toolRegistry,
+        backend,
+        structuredQueryBackend,
+        perCallTimeout,
+        executor,
+        maxConcurrentCalls,
+        null);
+  }
+
+  public DefaultAgentToolExecutor(
+      final ToolRegistry toolRegistry,
+      final ToolBackend backend,
+      final ToolBackend structuredQueryBackend,
+      final Duration perCallTimeout,
+      final Executor executor,
+      final int maxConcurrentCalls,
+      final MeterRegistry meterRegistry) {
     this.toolRegistry = Objects.requireNonNull(toolRegistry, "toolRegistry");
     this.backend = backend;
     this.structuredQueryBackend = structuredQueryBackend;
     this.perCallTimeout = requirePositive(perCallTimeout, "perCallTimeout");
     this.executor = Objects.requireNonNull(executor, "executor");
+    if (maxConcurrentCalls < 1) {
+      throw new IllegalArgumentException("maxConcurrentCalls must be positive");
+    }
+    this.bulkhead = new Semaphore(maxConcurrentCalls);
+    this.unauthorizedToolAccess =
+        meterRegistry == null
+            ? null
+            : meterRegistry.counter("medassist.security.unauthorized.tool.access");
   }
 
   @Override
@@ -77,6 +117,9 @@ public final class DefaultAgentToolExecutor implements AgentToolExecutor {
     final Set<String> expectedTools =
         toolRegistry.toolsFor(state.role(), state.classification(), state.deidentifiedQuery());
     if (!expectedTools.containsAll(state.allowedTools())) {
+      if (unauthorizedToolAccess != null) {
+        unauthorizedToolAccess.increment();
+      }
       return ToolExecutionResult.rejected(
           "state contains a tool outside its role-scoped allowlist");
     }
@@ -182,6 +225,9 @@ public final class DefaultAgentToolExecutor implements AgentToolExecutor {
 
   private ToolCallOutcome executeBackend(
       final ToolInvocationRequest request, final ToolBackend toolBackend, final Instant startedAt) {
+    if (!bulkhead.tryAcquire()) {
+      return ToolCallOutcome.failure(request.toolName(), request, startedAt, "BULKHEAD_REJECTED");
+    }
     try {
       final ToolBackendResult result =
           Objects.requireNonNull(toolBackend.execute(request), "backend result");
@@ -203,6 +249,8 @@ public final class DefaultAgentToolExecutor implements AgentToolExecutor {
           ToolResultProjector.runtimeSafetyEvidence(result));
     } catch (final RuntimeException exception) {
       return ToolCallOutcome.failure(request.toolName(), request, startedAt, "FAILED");
+    } finally {
+      bulkhead.release();
     }
   }
 
@@ -256,10 +304,18 @@ public final class DefaultAgentToolExecutor implements AgentToolExecutor {
         state.queryHash(),
         state.role(),
         state.classification(),
-        DEFAULT_TOP_K,
-        Map.of(),
+        topKForRetry(state.retryCount()),
+        state.retrievalFilters(),
         state.traceId(),
         state.requestId());
+  }
+
+  private static int topKForRetry(final int retryCount) {
+    if (retryCount <= 0) {
+      return DEFAULT_TOP_K;
+    }
+    final long expandedTopK = (long) DEFAULT_TOP_K + (long) retryCount * RETRY_TOP_K_INCREMENT;
+    return (int) Math.min(expandedTopK, ToolInvocationRequest.MAX_TOP_K);
   }
 
   private static Duration requirePositive(final Duration value, final String name) {

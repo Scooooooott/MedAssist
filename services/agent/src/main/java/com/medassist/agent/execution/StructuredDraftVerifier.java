@@ -4,6 +4,7 @@ import com.medassist.agent.state.AgentState;
 import com.medassist.agent.state.CitationSummary;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -61,7 +62,7 @@ public final class StructuredDraftVerifier implements DraftVerifier {
           seenCitations.add(citation.chunkId())
               && candidateIds.contains(citation.chunkId())
               && chunk != null
-              && chunk.content().contains(citation.quotedSpan());
+              && containsNormalizedContiguousSpan(chunk.content(), citation.quotedSpan());
       if (valid) {
         validCount++;
       } else {
@@ -73,5 +74,48 @@ public final class StructuredDraftVerifier implements DraftVerifier {
     return invalidCitation
         ? VerificationResult.retry(summary)
         : VerificationResult.accepted(summary);
+  }
+
+  private static boolean containsNormalizedContiguousSpan(
+      final String content, final String quotedSpan) {
+    final String normalizedSpan = normalizeCitationText(quotedSpan);
+    return !normalizedSpan.isEmpty() && normalizeCitationText(content).contains(normalizedSpan);
+  }
+
+  private static String normalizeCitationText(final String value) {
+    final StringBuilder normalized = new StringBuilder(value.length());
+    boolean pendingSpace = false;
+    for (int offset = 0; offset < value.length(); ) {
+      final int codePoint = value.codePointAt(offset);
+      offset += Character.charCount(codePoint);
+      if (isCitationWhitespace(codePoint)) {
+        pendingSpace = normalized.length() > 0;
+        continue;
+      }
+      if (pendingSpace) {
+        normalized.append(' ');
+        pendingSpace = false;
+      }
+      appendNormalizedPunctuation(normalized, codePoint);
+    }
+    return normalized.toString().toLowerCase(Locale.ROOT);
+  }
+
+  private static boolean isCitationWhitespace(final int codePoint) {
+    return Character.isWhitespace(codePoint) || Character.isSpaceChar(codePoint);
+  }
+
+  private static void appendNormalizedPunctuation(
+      final StringBuilder normalized, final int codePoint) {
+    switch (codePoint) {
+      case 0x2018, 0x2019, 0x201A, 0x201B -> normalized.append('\'');
+      case 0x201C, 0x201D, 0x201E, 0x201F -> normalized.append('"');
+      case 0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2015, 0x2212, 0xFE58, 0xFE63 ->
+          normalized.append('-');
+      case 0x2026 -> normalized.append("...");
+      default ->
+          normalized.appendCodePoint(
+              codePoint >= 0xFF01 && codePoint <= 0xFF5E ? codePoint - 0xFEE0 : codePoint);
+    }
   }
 }

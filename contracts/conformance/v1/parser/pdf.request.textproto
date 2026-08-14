@@ -1,0 +1,3 @@
+metadata { trace_id: "pdf" request_id: "pdf" actor: "fixture-user" role: "CLINICIAN" }
+storage_uri: "s3://medical-fixtures/report.pdf"
+mime_type: "application/pdf"

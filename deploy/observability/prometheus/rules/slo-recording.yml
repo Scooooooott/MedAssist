@@ -1,0 +1,35 @@
+groups:
+  - name: medassist-slo-recording
+    interval: 30s
+    rules:
+      - record: medassist:slo:e2e_answer:total_rate5m
+        expr: sum(rate(medassist_generation_sessions_total[5m]))
+      - record: medassist:slo:e2e_answer:good_latency_rate5m
+        expr: sum(rate(medassist_generation_session_duration_seconds_bucket{le="5.0"}[5m]))
+      - record: medassist:slo:e2e_answer:latency_error_ratio_rate5m
+        expr: 1 - (medassist:slo:e2e_answer:good_latency_rate5m / medassist:slo:e2e_answer:total_rate5m)
+      - record: medassist:slo:e2e_answer:latency_error_ratio_rate1h
+        expr: 1 - (sum(rate(medassist_generation_session_duration_seconds_bucket{le="5.0"}[1h])) / sum(rate(medassist_generation_sessions_total[1h])))
+      - record: medassist:slo:e2e_answer:latency_error_ratio_rate6h
+        expr: 1 - (sum(rate(medassist_generation_session_duration_seconds_bucket{le="5.0"}[6h])) / sum(rate(medassist_generation_sessions_total[6h])))
+      - record: medassist:slo:e2e_answer:latency_error_ratio_rate28d
+        expr: 1 - (sum(rate(medassist_generation_session_duration_seconds_bucket{le="5.0"}[28d])) / sum(rate(medassist_generation_sessions_total[28d])))
+
+      - record: medassist:slo:retrieval:latency_error_ratio_rate5m
+        expr: 1 - (sum(rate(medassist_span_duration_milliseconds_bucket{service_name="retrieval",span_name=~"retrieval($|\\..*)",le="500"}[5m])) / sum(rate(medassist_span_duration_milliseconds_count{service_name="retrieval",span_name=~"retrieval($|\\..*)"}[5m])))
+      - record: medassist:slo:retrieval:latency_error_ratio_rate28d
+        expr: 1 - (sum(rate(medassist_span_duration_milliseconds_bucket{service_name="retrieval",span_name=~"retrieval($|\\..*)",le="500"}[28d])) / sum(rate(medassist_span_duration_milliseconds_count{service_name="retrieval",span_name=~"retrieval($|\\..*)"}[28d])))
+
+      - record: medassist:slo:egress_guard:latency_error_ratio_rate5m
+        expr: 1 - (sum(rate(medassist_span_duration_milliseconds_bucket{span_name="egress.guard",le="50"}[5m])) / sum(rate(medassist_span_duration_milliseconds_count{span_name="egress.guard"}[5m])))
+      - record: medassist:slo:egress_guard:latency_error_ratio_rate28d
+        expr: 1 - (sum(rate(medassist_span_duration_milliseconds_bucket{span_name="egress.guard",le="50"}[28d])) / sum(rate(medassist_span_duration_milliseconds_count{span_name="egress.guard"}[28d])))
+
+      - record: medassist:slo:availability:error_ratio_rate5m
+        expr: sum(rate(http_server_requests_seconds_count{job="gateway",status=~"5.."}[5m])) / sum(rate(http_server_requests_seconds_count{job="gateway"}[5m]))
+      - record: medassist:slo:availability:error_ratio_rate1h
+        expr: sum(rate(http_server_requests_seconds_count{job="gateway",status=~"5.."}[1h])) / sum(rate(http_server_requests_seconds_count{job="gateway"}[1h]))
+      - record: medassist:slo:availability:error_ratio_rate6h
+        expr: sum(rate(http_server_requests_seconds_count{job="gateway",status=~"5.."}[6h])) / sum(rate(http_server_requests_seconds_count{job="gateway"}[6h]))
+      - record: medassist:slo:availability:error_ratio_rate28d
+        expr: sum(rate(http_server_requests_seconds_count{job="gateway",status=~"5.."}[28d])) / sum(rate(http_server_requests_seconds_count{job="gateway"}[28d]))

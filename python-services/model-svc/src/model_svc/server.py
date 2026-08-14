@@ -3,12 +3,14 @@ from __future__ import annotations
 import logging
 
 from medassist_common import (
+    apply_runtime_thread_settings,
     configure_generated_proto_path,
     configure_logging,
     serve_health,
 )
 
 from model_svc.backend import build_embedding_registry, build_reranker
+from model_svc.execution import PROCESS_MODEL, ModelExecutionPools
 from model_svc.grpc_service import ModelService, model_pb2_grpc  # type: ignore[attr-defined]
 from model_svc.settings import ModelSettings
 
@@ -20,6 +22,7 @@ LOGGER = logging.getLogger(__name__)
 def main() -> None:
     settings = ModelSettings()
     configure_logging(settings.service_name)
+    apply_runtime_thread_settings(settings)
     registry = build_embedding_registry(settings)
     reranker = build_reranker(settings) if settings.rerank_enabled else None
     embedding_ready = registry.warmup()
@@ -31,13 +34,21 @@ def main() -> None:
         if not reranker_ready:
             LOGGER.error("reranker backend is NOT_SERVING: %s", reranker.not_ready_reason)
 
-    service = ModelService(registry, reranker, settings.rerank_max_candidates)
+    execution = ModelExecutionPools(settings)
+    service = ModelService(
+        registry,
+        reranker,
+        settings.rerank_max_candidates,
+        execution,
+    )
     serve_health(
         settings,
         register_servicers=lambda server: model_pb2_grpc.add_ModelServiceServicer_to_server(
             service, server
         ),
-        readiness=lambda: registry.ready and (reranker is None or reranker.ready),
+        readiness=service.readiness,
+        process_model=PROCESS_MODEL,
+        on_shutdown=execution.shutdown,
     )
 
 

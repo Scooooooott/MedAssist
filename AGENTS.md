@@ -1,41 +1,22 @@
-# Agent Workflow
 
-This project uses a two-agent workflow.
 
-The main ChatGPT/Codex agent is responsible for high-judgment work:
-- interpreting requirements
-- architecture and design decisions
-- logic analysis
-- breaking features into implementation tasks
-- reviewing implementation quality
-- resolving tradeoffs
-- final integration decisions
-- deciding what tests or verification are required
-
-The `deepseek` subagent is used for token-heavy bounded implementation work:
-- implementing clearly scoped code blocks
-- generating boilerplate
-- writing straightforward functions, components, tests, or adapters
-- refactoring within a narrow instruction
-- summarizing large files or implementation areas when requested
-
-## Delegation Rules
-
-When a task includes substantial implementation work, the main agent should first decompose the work into small, explicit tasks, then delegate suitable implementation tasks to the `deepseek` subagent.
-
-The main agent must not delegate final architectural judgment, requirement interpretation, security-sensitive decisions, public API design, data model decisions, migration strategy, or cross-module integration decisions to `deepseek`.
-
-The `deepseek` subagent should receive narrow prompts with:
-- exact files or modules in scope
-- expected behavior
-- constraints
-- output format
-- whether file edits are allowed
-
-The main agent remains responsible for reviewing `deepseek` output before accepting it, integrating it, or presenting it as final.
-
-## Safety
-
-Prefer using `deepseek` for read-heavy exploration and clearly bounded implementation.
-Use the main ChatGPT/Codex agent for ambiguous, risky, or high-impact changes.
-If there is uncertainty, the main agent should analyze first, then delegate only after the task is well specified.
+=== SCOPE-LIMITS-SHORT (bounds what you PROPOSE, never what you look for) ===
+Report anything actually wrong here, including a rare-looking case this project
+really produces. Then keep the fix in scope:
+1. Not a security paper: assume a cooperating operator on their own machine
+   unless this project says otherwise. Verification is welcome; over-defense is
+   not.
+2. No hash, checksum or fingerprint unless it replaces a materially more
+   expensive operation AND its result changes what happens next.
+3. No feature flags, migration frameworks, compat layers or wrappers for cases
+   that do not occur here.
+4. Exotic encodings, symlink races and millisecond races are out of scope unless
+   reachable through this project's supported use. Reachable is enough;
+   constructible in principle is not.
+5. Where judgement is needed, judge — not a scoring table, a checklist, or a
+   re-run of something already settled.
+6. None of this overrides security, migration, verification or review that the
+   user, this project's conventions, or a higher-priority rule asked for.
+Before any check: what specific failure would this detect, and what would I do
+differently if it occurred? No answer means do not run it.
+Say plainly when something is correct. Do not manufacture findings.

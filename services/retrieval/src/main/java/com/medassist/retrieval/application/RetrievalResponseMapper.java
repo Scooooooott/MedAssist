@@ -25,6 +25,7 @@ public class RetrievalResponseMapper {
         outcome.query().rerankEnabled(),
         outcome.degraded(),
         outcome.degradationReasons(),
+        outcome.degradations(),
         new TimingBreakdownDto(
             outcome.embeddingMs(), outcome.retrievalMs(), 0L, outcome.retrievalMs()),
         Instant.now());

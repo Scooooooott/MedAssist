@@ -12,9 +12,12 @@ M1 does not include the egress PHI guard. Public deployment is blocked until M3.
 
 ## Endpoints
 
-- `POST /api/search`
-- `POST /api/answer`
-- `POST /api/answer/stream`
+- `POST /internal/api/search`
+- `POST /internal/api/answer`
+- `POST /internal/api/answer/stream`
+
+These are internal compatibility endpoints. Public traffic must enter through the gateway and
+the Agent or generation-session boundary; the retrieval service is not a public answer bypass.
 
 The current M1 implementation keeps provider configuration externalized and returns abstention when no valid retrieved citation exists.
 

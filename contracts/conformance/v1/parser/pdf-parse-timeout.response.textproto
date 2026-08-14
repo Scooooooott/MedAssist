@@ -1,0 +1,7 @@
+parse_status: PARSE_STATUS_FAILED
+warnings: "PDF parsing exceeded its deadline"
+error {
+  code: "PDF_PARSE_TIMEOUT"
+  message: "PDF parsing exceeded its deadline"
+  attributes { key: "format" value: "pdf" }
+}

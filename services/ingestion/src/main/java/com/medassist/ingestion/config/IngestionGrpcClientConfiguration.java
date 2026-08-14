@@ -1,5 +1,6 @@
 package com.medassist.ingestion.config;
 
+import com.medassist.common.tracing.TraceContextClientInterceptor;
 import com.medassist.contracts.v1.DeidServiceGrpc;
 import com.medassist.contracts.v1.ModelServiceGrpc;
 import com.medassist.contracts.v1.ParserServiceGrpc;
@@ -86,6 +87,9 @@ public class IngestionGrpcClientConfiguration {
     if (endpoint == null || endpoint.isBlank()) {
       throw new IllegalArgumentException("gRPC endpoint must not be blank");
     }
-    return ManagedChannelBuilder.forTarget(endpoint).usePlaintext().build();
+    return ManagedChannelBuilder.forTarget(endpoint)
+        .usePlaintext()
+        .intercept(new TraceContextClientInterceptor())
+        .build();
   }
 }

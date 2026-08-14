@@ -6,7 +6,7 @@ from typing import Protocol
 from urllib.parse import urlparse
 
 import grpc
-from medassist_common import configure_generated_proto_path
+from medassist_common import BoundedExecutor, WorkRejectedError, configure_generated_proto_path
 
 configure_generated_proto_path()
 
@@ -44,16 +44,19 @@ class ParserServiceServicer(parser_pb2_grpc.ParserServiceServicer):  # type: ign
         parser: LightweightParser | None = None,
         pdf_backend: PdfBackend | None = None,
         pdf_timeout_seconds: float = 120.0,
+        executor: BoundedExecutor | None = None,
     ) -> None:
         self._object_reader = object_reader
         self._parser = parser or LightweightParser()
         self._pdf_backend = pdf_backend
         self._pdf_timeout_seconds = pdf_timeout_seconds
+        self._executor = executor
 
     def readiness(self) -> bool:
         """Report local readiness without making a network request or logging PHI."""
 
-        return self._object_reader is not None and self._parser is not None
+        executor_ready = self._executor is None or self._executor.ready
+        return self._object_reader is not None and self._parser is not None and executor_ready
 
     def ParseDocument(  # noqa: N802
         self,
@@ -61,6 +64,25 @@ class ParserServiceServicer(parser_pb2_grpc.ParserServiceServicer):  # type: ign
         context: grpc.ServicerContext,
     ) -> parser_pb2.ParseDocumentResponse:
         del context
+        if self._executor is None:
+            return self._parse_document(request)
+        try:
+            return self._executor.execute(
+                "ParseDocument",
+                "offline",
+                lambda: self._parse_document(request),
+            )
+        except WorkRejectedError:
+            return self._failure(
+                "RESOURCE_EXHAUSTED",
+                "parser worker capacity exhausted; offline work rejected",
+                attributes={"retryable": "true"},
+            )
+
+    def _parse_document(
+        self,
+        request: parser_pb2.ParseDocumentRequest,
+    ) -> parser_pb2.ParseDocumentResponse:
         storage_uri = request.storage_uri.strip()
         if not storage_uri:
             return self._failure("INVALID_ARGUMENT", "storage_uri is required")
@@ -249,6 +271,7 @@ def build_parser_service(
     *,
     object_reader: ObjectReader | None = None,
     pdf_backend: PdfBackend | None = None,
+    executor: BoundedExecutor | None = None,
 ) -> ParserServiceServicer:
     reader = object_reader or S3ObjectStore(settings)  # type: ignore[arg-type]
     timeout_seconds = float(getattr(settings, "pdf_timeout_seconds", 120.0))
@@ -256,4 +279,5 @@ def build_parser_service(
         reader,
         pdf_backend=pdf_backend,
         pdf_timeout_seconds=timeout_seconds,
+        executor=executor,
     )

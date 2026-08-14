@@ -1,0 +1,3 @@
+results { id: "candidate" score: 0.875 rank: 1 }
+model_name: "fixture-reranker"
+model_version: "v1"

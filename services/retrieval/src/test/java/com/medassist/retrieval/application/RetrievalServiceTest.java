@@ -5,6 +5,13 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.medassist.common.context.ContextCarrier;
+import com.medassist.common.context.ExecutionContext;
+import com.medassist.common.resilience.ComponentPolicyTable;
+import com.medassist.common.resilience.DegradationEvent;
+import com.medassist.common.resilience.DegradationRecorder;
+import com.medassist.common.resilience.FallbackMode;
+import com.medassist.common.resilience.ResilienceExecutor;
 import com.medassist.retrieval.api.dto.SearchRequest;
 import com.medassist.retrieval.application.model.RetrievalMode;
 import com.medassist.retrieval.application.model.RetrievedChunk;
@@ -16,26 +23,40 @@ import com.medassist.retrieval.model.QueryEmbeddingClient;
 import com.medassist.retrieval.repository.LexicalSearchRepository;
 import com.medassist.retrieval.repository.RankedChunk;
 import com.medassist.retrieval.repository.VectorSearchRepository;
+import com.medassist.retrieval.rerank.RerankClientException;
 import com.medassist.retrieval.rerank.RerankClientResponse;
 import com.medassist.retrieval.rerank.RerankScore;
 import com.medassist.retrieval.rerank.RerankingService;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class RetrievalServiceTest {
   private final ExecutorService executor = Executors.newFixedThreadPool(2);
+  private final List<ResilienceExecutor> resilienceExecutors = new ArrayList<>();
+
+  @BeforeEach
+  void bindExecutionContext() {
+    ContextCarrier.restore(
+        new ExecutionContext("test-user", Set.of("CLINICIAN"), "request-id", "trace-id", Map.of()));
+  }
 
   @AfterEach
   void closeExecutor() {
     executor.shutdownNow();
+    resilienceExecutors.forEach(ResilienceExecutor::close);
+    ContextCarrier.clear();
   }
 
   @Test
@@ -88,19 +109,61 @@ class RetrievalServiceTest {
   @Test
   void hybridDegradesToVectorWhenLexicalChannelFails() {
     final RetrievedChunk vector = chunk(1);
+    final List<DegradationEvent> recorded = new ArrayList<>();
     final RetrievalService service =
         service(
             embeddingClient(),
             (query, embedding) -> List.of(vector),
             query -> {
-              throw new IllegalStateException("lexical unavailable");
-            });
+              throw new IllegalStateException("patient Jane Doe lexical query failed");
+            },
+            successfulReranking(),
+            recorded::add);
 
     final SearchOutcome outcome = service.search(request(RetrievalMode.HYBRID));
 
     assertTrue(outcome.degraded());
     assertEquals(List.of("LEXICAL_CHANNEL_FAILED"), outcome.degradationReasons());
+    assertEquals("LEXICAL_CHANNEL_FAILED", outcome.degradations().getFirst().code());
+    assertEquals("LEXICAL_RETRIEVAL", outcome.degradations().getFirst().affectedStage());
+    assertEquals(FallbackMode.VECTOR_RESULTS, outcome.degradations().getFirst().fallbackMode());
     assertEquals(vector.chunkId(), outcome.chunks().get(0).chunkId());
+    assertEquals(1, recorded.size());
+    assertFalse(recorded.getFirst().toString().contains("Jane Doe"));
+    assertFalse(recorded.getFirst().toString().contains(vector.text()));
+  }
+
+  @Test
+  void rerankFailureRetainsOriginalOrderWithStructuredDegradation() {
+    final RetrievedChunk first = chunk(1);
+    final RetrievedChunk second = chunk(2);
+    final List<DegradationEvent> recorded = new ArrayList<>();
+    final RerankingService failedReranker =
+        new RerankingService(
+            (query, candidates, modelName, timeout) -> {
+              throw RerankClientException.backend("patient Jane Doe rerank failed", null);
+            },
+            newResilienceExecutor());
+    final RetrievalService service =
+        service(
+            embeddingClient(),
+            (query, embedding) -> List.of(first, second),
+            query -> List.of(),
+            failedReranker,
+            recorded::add);
+
+    final SearchOutcome outcome = service.search(request(RetrievalMode.VECTOR_ONLY, true));
+
+    assertTrue(outcome.degraded());
+    assertEquals(
+        List.of(first.chunkId(), second.chunkId()),
+        outcome.chunks().stream().map(RetrievedChunk::chunkId).toList());
+    assertEquals(List.of("RERANK_BACKEND_ERROR"), outcome.degradationReasons());
+    assertEquals("RERANK_BACKEND_ERROR", outcome.degradations().getFirst().code());
+    assertEquals(FallbackMode.ORIGINAL_ORDER, outcome.degradations().getFirst().fallbackMode());
+    assertEquals(1, recorded.size());
+    assertFalse(recorded.getFirst().toString().contains("Jane Doe"));
+    assertFalse(recorded.getFirst().toString().contains(first.text()));
   }
 
   @Test
@@ -151,24 +214,54 @@ class RetrievalServiceTest {
       final QueryEmbeddingClient embeddings,
       final VectorSearchRepository vector,
       final LexicalSearchRepository lexical) {
+    return service(embeddings, vector, lexical, successfulReranking(), DegradationRecorder.noop());
+  }
+
+  private RetrievalService service(
+      final QueryEmbeddingClient embeddings,
+      final VectorSearchRepository vector,
+      final LexicalSearchRepository lexical,
+      final RerankingService reranking,
+      final DegradationRecorder degradationRecorder) {
     final RetrievalProperties properties = new RetrievalProperties();
     properties.setRetrievalTimeout(Duration.ofSeconds(1));
-    final RerankingService reranking =
-        new RerankingService(
-            (query, candidates, modelName, timeout) ->
-                new RerankClientResponse(
-                    java.util.stream.IntStream.range(0, candidates.size())
-                        .mapToObj(
-                            index ->
-                                new RerankScore(
-                                    candidates.get(index).chunkId().toString(),
-                                    1.0 - index * 0.01,
-                                    index + 1))
-                        .toList(),
-                    modelName,
-                    "test-v1"));
+    final ResilienceExecutor resilienceExecutor = newResilienceExecutor();
     return new RetrievalService(
-        properties, embeddings, vector, lexical, new RrfFusion(), reranking, executor);
+        properties,
+        embeddings,
+        vector,
+        lexical,
+        new RrfFusion(),
+        reranking,
+        executor,
+        Optional.of(degradationRecorder),
+        resilienceExecutor);
+  }
+
+  private RerankingService successfulReranking() {
+    return new RerankingService(
+        (query, candidates, modelName, timeout) ->
+            new RerankClientResponse(
+                java.util.stream.IntStream.range(0, candidates.size())
+                    .mapToObj(
+                        index ->
+                            new RerankScore(
+                                candidates.get(index).chunkId().toString(),
+                                1.0 - index * 0.01,
+                                index + 1))
+                    .toList(),
+                modelName,
+                "test-v1"),
+        newResilienceExecutor());
+  }
+
+  private ResilienceExecutor newResilienceExecutor() {
+    final ResilienceExecutor resilienceExecutor =
+        new ResilienceExecutor(
+            ComponentPolicyTable.conservativeDefaults(),
+            Executors.newVirtualThreadPerTaskExecutor());
+    resilienceExecutors.add(resilienceExecutor);
+    return resilienceExecutor;
   }
 
   private QueryEmbeddingClient embeddingClient() {
@@ -177,6 +270,10 @@ class RetrievalServiceTest {
   }
 
   private SearchRequest request(final RetrievalMode mode) {
+    return request(mode, false);
+  }
+
+  private SearchRequest request(final RetrievalMode mode, final boolean rerankEnabled) {
     return new SearchRequest(
         "aspirin",
         5,
@@ -185,7 +282,7 @@ class RetrievalServiceTest {
         "bge-m3",
         "m1-baseline",
         mode,
-        false,
+        rerankEnabled,
         false,
         null,
         "structure-v1",

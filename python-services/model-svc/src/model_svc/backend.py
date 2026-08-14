@@ -38,6 +38,8 @@ def build_backend(settings: ModelSettings) -> EmbeddingBackend:
         quantization=settings.quantization,
         query_prefix=settings.query_prefix,
         passage_prefix=settings.passage_prefix,
+        intra_op_threads=settings.runtime_intra_op_threads,
+        inter_op_threads=settings.runtime_inter_op_threads,
     )
 
 
@@ -67,6 +69,8 @@ def _build_embedding_backend(
         quantization=config.quantization,
         query_prefix=config.query_prefix,
         passage_prefix=config.passage_prefix,
+        intra_op_threads=settings.runtime_intra_op_threads,
+        inter_op_threads=settings.runtime_inter_op_threads,
     )
 
 
@@ -109,6 +113,8 @@ def build_reranker(settings: ModelSettings) -> RerankBackend:
             model_version=settings.rerank_online_model_version,
             max_length=settings.rerank_online_max_length,
             batch_size=settings.rerank_online_batch_size,
+            intra_op_threads=settings.runtime_intra_op_threads,
+            inter_op_threads=settings.runtime_inter_op_threads,
         )
     return OnnxCrossEncoderReranker(
         model_path=settings.rerank_offline_model_path,
@@ -117,4 +123,6 @@ def build_reranker(settings: ModelSettings) -> RerankBackend:
         model_version=settings.rerank_offline_model_version,
         max_length=settings.rerank_offline_max_length,
         batch_size=settings.rerank_offline_batch_size,
+        intra_op_threads=settings.runtime_intra_op_threads,
+        inter_op_threads=settings.runtime_inter_op_threads,
     )

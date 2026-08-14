@@ -1,0 +1,62 @@
+x-medassist-fault-endpoints:
+  deid: &deid-endpoint "toxiproxy:8666"
+  policy: &policy-endpoint "toxiproxy:8667"
+  keycloak: &keycloak-endpoint "toxiproxy:8668"
+  model: &model-endpoint "toxiproxy:8669"
+  parser: &parser-endpoint "toxiproxy:8670"
+  redis: &redis-endpoint "toxiproxy:8671"
+  redpanda: &redpanda-endpoint "toxiproxy:8672"
+  postgres: &postgres-endpoint "toxiproxy:8673"
+  llm-primary: &llm-primary-endpoint "toxiproxy:8674"
+  llm-secondary: &llm-secondary-endpoint "toxiproxy:8675"
+
+services:
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    profiles: ["faults"]
+    ports:
+      - "8474:8474"
+      - "18666-18675:8666-8675"
+    labels:
+      medassist.fault.deid: *deid-endpoint
+      medassist.fault.policy: *policy-endpoint
+      medassist.fault.keycloak: *keycloak-endpoint
+      medassist.fault.model: *model-endpoint
+      medassist.fault.parser: *parser-endpoint
+      medassist.fault.redis: *redis-endpoint
+      medassist.fault.redpanda: *redpanda-endpoint
+      medassist.fault.postgres: *postgres-endpoint
+      medassist.fault.llm-primary: *llm-primary-endpoint
+      medassist.fault.llm-secondary: *llm-secondary-endpoint
+
+  toxiproxy-init:
+    image: curlimages/curl:8.12.1
+    profiles: ["faults"]
+    depends_on:
+      toxiproxy:
+        condition: service_started
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        until curl --fail --silent http://toxiproxy:8474/version >/dev/null; do sleep 1; done
+        create_proxy() {
+          payload="{\"name\":\"$$1\",\"listen\":\"0.0.0.0:$$2\",\"upstream\":\"$$3\",\"enabled\":true}"
+          if ! curl --fail --silent --show-error \
+            -H 'Content-Type: application/json' -d "$$payload" \
+            http://toxiproxy:8474/proxies >/dev/null; then
+            curl --fail --silent --show-error \
+              -H 'Content-Type: application/json' -d "$$payload" \
+              "http://toxiproxy:8474/proxies/$$1" >/dev/null
+          fi
+        }
+        create_proxy medassist_deid 8666 deid-svc:9002
+        create_proxy medassist_policy 8667 identity-policy:8081
+        create_proxy medassist_keycloak 8668 keycloak:8080
+        create_proxy medassist_model 8669 model-svc:9003
+        create_proxy medassist_parser 8670 parser-svc:9001
+        create_proxy medassist_redis 8671 redis:6379
+        create_proxy medassist_redpanda 8672 redpanda:9092
+        create_proxy medassist_postgres 8673 postgres:5432
+        create_proxy medassist_llm_primary 8674 llm-primary:8080
+        create_proxy medassist_llm_secondary 8675 llm-secondary:8080
+    restart: "no"

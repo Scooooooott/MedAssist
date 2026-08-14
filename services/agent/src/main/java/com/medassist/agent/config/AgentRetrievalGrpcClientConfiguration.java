@@ -2,6 +2,7 @@ package com.medassist.agent.config;
 
 import com.medassist.agent.execution.RetrievalGrpcToolBackend;
 import com.medassist.agent.execution.ToolBackend;
+import com.medassist.common.tracing.TraceContextClientInterceptor;
 import com.medassist.contracts.v1.RetrievalServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
@@ -15,7 +16,10 @@ import org.springframework.context.annotation.Configuration;
 public class AgentRetrievalGrpcClientConfiguration {
   @Bean(name = "agentRetrievalGrpcChannel", destroyMethod = "shutdown")
   ManagedChannel agentRetrievalGrpcChannel(final RetrievalProperties properties) {
-    return ManagedChannelBuilder.forTarget(properties.endpoint()).usePlaintext().build();
+    return ManagedChannelBuilder.forTarget(properties.endpoint())
+        .usePlaintext()
+        .intercept(new TraceContextClientInterceptor())
+        .build();
   }
 
   @Bean

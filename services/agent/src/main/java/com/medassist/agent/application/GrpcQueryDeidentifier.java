@@ -1,6 +1,8 @@
 package com.medassist.agent.application;
 
 import com.medassist.agent.config.DeidProperties;
+import com.medassist.common.resilience.ResilienceComponent;
+import com.medassist.common.resilience.ResilienceExecutor;
 import com.medassist.contracts.v1.AnonymizeRequest;
 import com.medassist.contracts.v1.AnonymizeResponse;
 import com.medassist.contracts.v1.DeidPolicy;
@@ -16,11 +18,15 @@ import java.util.concurrent.TimeUnit;
 public final class GrpcQueryDeidentifier implements QueryDeidentifier {
   private final DeidServiceGrpc.DeidServiceBlockingStub stub;
   private final DeidProperties properties;
+  private final ResilienceExecutor resilienceExecutor;
 
   public GrpcQueryDeidentifier(
-      final DeidServiceGrpc.DeidServiceBlockingStub stub, final DeidProperties properties) {
+      final DeidServiceGrpc.DeidServiceBlockingStub stub,
+      final DeidProperties properties,
+      final ResilienceExecutor resilienceExecutor) {
     this.stub = Objects.requireNonNull(stub, "stub");
     this.properties = Objects.requireNonNull(properties, "properties");
+    this.resilienceExecutor = Objects.requireNonNull(resilienceExecutor, "resilienceExecutor");
   }
 
   @Override
@@ -49,8 +55,12 @@ public final class GrpcQueryDeidentifier implements QueryDeidentifier {
     final AnonymizeResponse response;
     try {
       response =
-          stub.withDeadlineAfter(properties.timeout().toNanos(), TimeUnit.NANOSECONDS)
-              .anonymize(request);
+          resilienceExecutor.execute(
+              ResilienceComponent.DEIDENTIFICATION,
+              true,
+              () ->
+                  stub.withDeadlineAfter(properties.timeout().toNanos(), TimeUnit.NANOSECONDS)
+                      .anonymize(request));
     } catch (RuntimeException exception) {
       throw new DeidentificationException("de-identification service unavailable", exception);
     }

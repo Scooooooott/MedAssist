@@ -1,13 +1,30 @@
 spring:
   application:
     name: identity-policy
+  threads:
+    virtual:
+      enabled: true
 server:
   port: 8081
+medassist:
+  audit:
+    client:
+      enabled: ${MEDASSIST_AUDIT_CLIENT_ENABLED:false}
+  security:
+    jwk-set-uri: "${MEDASSIST_JWK_SET_URI:http://localhost:8087/realms/medassist/protocol/openid-connect/certs}"
 logging:
   pattern:
-    level: "%5p [trace_id=%X{trace_id:-}]"
+    level: "%5p [trace_id=%X{traceId:-} span_id=%X{spanId:-}]"
 management:
+  tracing:
+    sampling:
+      probability: ${MEDASSIST_TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${MEDASSIST_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics,prometheus

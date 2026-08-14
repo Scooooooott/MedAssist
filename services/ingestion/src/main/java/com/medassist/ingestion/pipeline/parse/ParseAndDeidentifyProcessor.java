@@ -4,7 +4,9 @@ import com.medassist.domain.DocumentIR;
 import com.medassist.domain.PhiEntity;
 import com.medassist.domain.Section;
 import com.medassist.domain.TableBlock;
+import com.medassist.ingestion.discovery.DiscoveryTransientException;
 import com.medassist.ingestion.discovery.ObjectDiscoveryResult;
+import com.medassist.ingestion.discovery.Sha256Hasher;
 import com.medassist.ingestion.pipeline.mapping.SourceRangeMap;
 import com.medassist.ingestion.pipeline.model.FailureStage;
 import com.medassist.ingestion.pipeline.model.IngestionWorkItem;
@@ -28,6 +30,7 @@ public final class ParseAndDeidentifyProcessor {
   private final Duration parserTimeout;
   private final Duration deidentificationTimeout;
   private final String policy;
+  private final Sha256Hasher sha256Hasher;
 
   public ParseAndDeidentifyProcessor(
       final ParserClient parserClient, final DeidentificationClient deidentificationClient) {
@@ -56,11 +59,19 @@ public final class ParseAndDeidentifyProcessor {
     this.parserTimeout = parserTimeout;
     this.deidentificationTimeout = deidentificationTimeout;
     this.policy = requireText(policy, "policy");
+    this.sha256Hasher = new Sha256Hasher();
   }
 
   public ParseAndDeidentifyState process(final IngestionWorkItem workItem) {
     Objects.requireNonNull(workItem, "workItem");
     final ObjectDiscoveryResult discovery = workItem.discoveryResult();
+    try {
+      if (!sha256Hasher.hash(discovery.object()).equalsIgnoreCase(discovery.currentFingerprint())) {
+        return quarantine(workItem, FailureStage.PARSE, "object content changed since discovery");
+      }
+    } catch (final DiscoveryTransientException exception) {
+      return quarantine(workItem, FailureStage.PARSE, "object consistency check failed");
+    }
     final ParserResponse parserResponse;
     try {
       parserResponse =

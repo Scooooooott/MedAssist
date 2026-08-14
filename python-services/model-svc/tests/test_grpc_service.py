@@ -5,6 +5,7 @@ from concurrent import futures
 import grpc  # type: ignore[import-untyped]
 import pytest
 from medassist.contracts.v1 import model_pb2, model_pb2_grpc  # type: ignore[import-not-found]
+
 from model_svc.core import (
     DeterministicEmbeddingModel,
     DeterministicReranker,

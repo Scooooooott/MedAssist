@@ -1,0 +1,3 @@
+metadata { trace_id: "deid-invalid" request_id: "deid-invalid" actor: "fixture-user" role: "CLINICIAN" }
+text: "synthetic text"
+policy: 99

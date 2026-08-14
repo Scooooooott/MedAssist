@@ -1,0 +1,31 @@
+name: Native image verification
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "23 2 * * 2"
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [gateway, identity-policy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: "25"
+          distribution: graalvm
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          cache: maven
+      - name: Install reactor dependencies
+        run: mvn -DskipTests install
+      - name: Run native tests
+        run: mvn -f services/${{ matrix.service }}/pom.xml -PnativeTest test
+      - name: Build native executable
+        run: mvn -f services/${{ matrix.service }}/pom.xml -Pnative native:compile

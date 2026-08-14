@@ -104,6 +104,7 @@ public final class RetrievalGrpcService extends RetrievalServiceGrpc.RetrievalSe
             .setRerankEnabled(outcome.query().rerankEnabled())
             .setDegraded(outcome.degraded())
             .addAllDegradationReasons(outcome.degradationReasons())
+            .addAllDegradations(outcome.degradations().stream().map(this::toDegradation).toList())
             .setTiming(
                 TimingBreakdown.newBuilder()
                     .setEmbeddingMs(outcome.embeddingMs())
@@ -112,6 +113,16 @@ public final class RetrievalGrpcService extends RetrievalServiceGrpc.RetrievalSe
             .setAppliedFilters(toFilters(outcome.query().filters()));
     outcome.chunks().stream().map(this::toResult).forEach(response::addResults);
     return response.build();
+  }
+
+  private com.medassist.contracts.v1.Degradation toDegradation(
+      final com.medassist.common.resilience.Degradation degradation) {
+    return com.medassist.contracts.v1.Degradation.newBuilder()
+        .setCode(degradation.code())
+        .setAffectedStage(degradation.affectedStage())
+        .setFallbackMode(degradation.fallbackMode().name())
+        .setReason(degradation.reason())
+        .build();
   }
 
   private com.medassist.contracts.v1.RetrievalMode toProtoMode(

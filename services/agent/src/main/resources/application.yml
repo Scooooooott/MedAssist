@@ -1,9 +1,33 @@
 spring:
   application:
     name: agent
+  threads:
+    virtual:
+      enabled: true
+  data:
+    redis:
+      host: ${MEDASSIST_REDIS_HOST:localhost}
+      port: ${MEDASSIST_REDIS_PORT:6379}
+      connect-timeout: ${MEDASSIST_REDIS_CONNECT_TIMEOUT:1s}
+      timeout: ${MEDASSIST_REDIS_TIMEOUT:2s}
 server:
   port: 8085
 agent:
+  generation:
+    key-prefix: ${MEDASSIST_GENERATION_KEY_PREFIX:medassist:generation}
+    policy-version: ${MEDASSIST_POLICY_VERSION:v1}
+    max-duration: ${MEDASSIST_GENERATION_MAX_DURATION:60s}
+    max-background-window: ${MEDASSIST_GENERATION_BACKGROUND_WINDOW:30s}
+    max-tokens: ${MEDASSIST_GENERATION_MAX_TOKENS:2048}
+    max-events: ${MEDASSIST_GENERATION_MAX_EVENTS:256}
+    max-buffered-bytes: ${MEDASSIST_GENERATION_MAX_BUFFERED_BYTES:262144}
+    max-active-per-user: ${MEDASSIST_GENERATION_MAX_ACTIVE_PER_USER:2}
+    max-active-global: ${MEDASSIST_GENERATION_MAX_ACTIVE_GLOBAL:50}
+    ttl: ${MEDASSIST_GENERATION_TTL:10m}
+    expired-metadata-retention: ${MEDASSIST_GENERATION_EXPIRED_METADATA_RETENTION:5m}
+    max-chunk-characters: ${MEDASSIST_GENERATION_MAX_CHUNK_CHARACTERS:512}
+    replay-batch-size: ${MEDASSIST_GENERATION_REPLAY_BATCH_SIZE:100}
+    replay-poll-interval: ${MEDASSIST_GENERATION_REPLAY_POLL_INTERVAL:100ms}
   execution:
     parallelism: ${MEDASSIST_AGENT_TOOL_PARALLELISM:8}
   chat-memory:
@@ -14,11 +38,68 @@ agent:
     endpoint: "${MEDASSIST_DEID_ENDPOINT:localhost:9002}"
     timeout: 5s
     policy: SAFE_HARBOR_SURROGATE
+  llm:
+    enabled: ${MEDASSIST_LLM_ENABLED:false}
+    routing:
+      enabled: ${MEDASSIST_LLM_ROUTING_ENABLED:true}
+      route: [openai, deepseek, local]
+      max-retry-after: 5s
+      budget:
+        daily: ${MEDASSIST_LLM_DAILY_BUDGET_USD:25}
+        monthly: ${MEDASSIST_LLM_MONTHLY_BUDGET_USD:500}
+        soft-threshold: 0.80
+      providers:
+        openai:
+          endpoint: ${MEDASSIST_OPENAI_ENDPOINT:https://api.openai.com/v1/chat/completions}
+          api-key: ${MEDASSIST_OPENAI_API_KEY:}
+          model: ${MEDASSIST_OPENAI_MODEL:gpt-4.1-2025-04-14}
+          destination: EXTERNAL_LLM
+          first-token-timeout: 5s
+          overall-timeout: 30s
+          requests-per-minute: 60
+          max-output-tokens: 1024
+          input-cost-per-1k-tokens: ${MEDASSIST_OPENAI_INPUT_COST_PER_1K:0.002}
+          output-cost-per-1k-tokens: ${MEDASSIST_OPENAI_OUTPUT_COST_PER_1K:0.008}
+        deepseek:
+          endpoint: ${MEDASSIST_DEEPSEEK_ENDPOINT:https://api.deepseek.com/chat/completions}
+          api-key: ${MEDASSIST_DEEPSEEK_API_KEY:}
+          model: ${MEDASSIST_DEEPSEEK_MODEL:deepseek-v3.2-20251201}
+          destination: EXTERNAL_LLM
+          first-token-timeout: 5s
+          overall-timeout: 30s
+          requests-per-minute: 60
+          max-output-tokens: 1024
+          input-cost-per-1k-tokens: ${MEDASSIST_DEEPSEEK_INPUT_COST_PER_1K:0.0005}
+          output-cost-per-1k-tokens: ${MEDASSIST_DEEPSEEK_OUTPUT_COST_PER_1K:0.0015}
+        local:
+          endpoint: ${MEDASSIST_LOCAL_LLM_ENDPOINT:http://localhost:11434/v1/chat/completions}
+          model: ${MEDASSIST_LOCAL_LLM_MODEL:qwen2.5-7b-v1}
+          destination: LOCAL_MODEL
+          first-token-timeout: 10s
+          overall-timeout: 60s
+          requests-per-minute: 120
+          max-output-tokens: 1024
+          input-cost-per-1k-tokens: 0
+          output-cost-per-1k-tokens: 0
+medassist:
+  audit:
+    client:
+      enabled: ${MEDASSIST_AUDIT_CLIENT_ENABLED:false}
+  security:
+    jwk-set-uri: "${MEDASSIST_JWK_SET_URI:http://localhost:8087/realms/medassist/protocol/openid-connect/certs}"
 logging:
   pattern:
-    level: "%5p [trace_id=%X{trace_id:-}]"
+    level: "%5p [trace_id=%X{traceId:-} span_id=%X{spanId:-}]"
 management:
+  tracing:
+    sampling:
+      probability: ${MEDASSIST_TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${MEDASSIST_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics,prometheus

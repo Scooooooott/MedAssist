@@ -1,5 +1,7 @@
 package com.medassist.retrieval.rerank;
 
+import com.medassist.common.resilience.ResilienceComponent;
+import com.medassist.common.resilience.ResilienceExecutor;
 import com.medassist.retrieval.application.model.RetrievedChunk;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -8,15 +10,18 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 
 /** Applies a reranker while preserving source retrieval metadata and safe fallback behavior. */
 public final class RerankingService {
   private final RerankClient client;
+  private final ResilienceExecutor resilienceExecutor;
 
-  public RerankingService(final RerankClient client) {
-    this.client = client;
+  public RerankingService(final RerankClient client, final ResilienceExecutor resilienceExecutor) {
+    this.client = Objects.requireNonNull(client, "client");
+    this.resilienceExecutor = Objects.requireNonNull(resilienceExecutor, "resilienceExecutor");
   }
 
   public RerankingResult rerank(
@@ -42,7 +47,11 @@ public final class RerankingService {
 
     final RerankClientResponse response;
     try {
-      response = client.rerank(query, fusedCandidates, modelName, timeout);
+      response =
+          resilienceExecutor.execute(
+              ResilienceComponent.RERANK,
+              true,
+              () -> client.rerank(query, fusedCandidates, modelName, timeout));
     } catch (final RerankClientException exception) {
       return degraded(originalTopK, exception.reason().name(), modelName, null);
     } catch (final RuntimeException exception) {

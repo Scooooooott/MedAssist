@@ -1,4 +1,19 @@
+# Local environment files and secrets. Keep checked-in examples visible.
 /.env
+/.env.*
+!/.env.example
+!/.env.*.example
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+**/secrets/
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
 /.tools/
 /.idea/
 /.vscode/
@@ -40,3 +55,11 @@ contracts/**/_generated/
 python-services/**/_generated/
 python-services/**/generated/
 docker-data/
+
+# Local databases, model caches, and runtime artifacts.
+*.sqlite3
+*.db
+models/
+**/models/
+checkpoints/
+**/checkpoints/

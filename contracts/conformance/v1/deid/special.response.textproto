@@ -1,0 +1,9 @@
+text: "PERSON_SURROGATE"
+entities {
+  entity_type: "PERSON"
+  start: 1
+  end: 9
+  score: 0.875
+  recognizer: "fixture-recognizer"
+}
+policy_version: "fixture-policy-v1"

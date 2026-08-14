@@ -17,6 +17,11 @@
     </dependency>
     <dependency>
       <groupId>com.medassist</groupId>
+      <artifactId>audit-client</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.medassist</groupId>
       <artifactId>contracts</artifactId>
       <version>${project.version}</version>
       <exclusions>

@@ -1,0 +1,4 @@
+metadata { trace_id: "deid-special" request_id: "deid-special" actor: "fixture-user" role: "CLINICIAN" }
+text: "Jos\u00e9 \u5c71\u7530\nward\t\u2713"
+policy: DEID_POLICY_SAFE_HARBOR_SURROGATE
+options { key: "document_key" value: "doc-\u03b1" }

@@ -1,0 +1,33 @@
+ir {
+  sections {
+    path: "1"
+    heading: "Evidence"
+    level: 1
+    text: "Synthetic evidence summary"
+    children {
+      path: "1.1"
+      heading: "Detail"
+      level: 2
+      text: "Synthetic detail"
+      source_range { start: 4 end: 20 }
+    }
+    source_range { start: 0 end: 30 }
+  }
+  tables {
+    caption: "Synthetic table"
+    headers: "Metric"
+    headers: "Value"
+    rows {
+      cells { key: "Metric" value: "count" }
+      cells { key: "Value" value: "2" }
+    }
+    source_range { start: 31 end: 60 }
+    section_path: "1"
+    linearized_text: "| Metric | Value |\n| --- | --- |\n| count | 2 |"
+  }
+  metadata { key: "fixture" value: "normal" }
+  metadata { key: "source_id" value: "source-001" }
+  metadata { key: "mime_type" value: "text/markdown" }
+  metadata { key: "format" value: "md" }
+}
+parse_status: PARSE_STATUS_SUCCEEDED

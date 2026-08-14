@@ -1,0 +1,6 @@
+parse_status: PARSE_STATUS_FAILED
+error {
+  code: "STORAGE_BACKEND_UNAVAILABLE"
+  message: "object-store client is unavailable"
+  attributes { key: "retryable" value: "false" }
+}

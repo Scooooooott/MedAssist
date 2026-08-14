@@ -1,0 +1,61 @@
+apiVersion: 1
+
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+  - name: Tempo
+    orgId: 1
+
+prune: true
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      prometheusType: Prometheus
+      prometheusVersion: 3.13.1
+      exemplarTraceIdDestinations:
+        - datasourceUid: tempo
+          name: trace_id
+        - datasourceUid: tempo
+          name: traceID
+  - name: Tempo
+    type: tempo
+    uid: tempo
+    access: proxy
+    url: http://tempo:3200
+    editable: false
+    jsonData:
+      tracesToMetrics:
+        datasourceUid: prometheus
+        spanStartTimeShift: -5m
+        spanEndTimeShift: 5m
+        tags:
+          - key: service.name
+            value: service_name
+          - key: span.name
+            value: span_name
+        queries:
+          - name: Span rate
+            query: 'sum(rate(medassist_span_calls_total{$$__tags}[5m]))'
+          - name: Span P95
+            query: 'histogram_quantile(0.95, sum by (le) (rate(medassist_span_duration_milliseconds_bucket{$$__tags}[5m])))'
+      serviceMap:
+        datasourceUid: prometheus
+      nodeGraph:
+        enabled: true
+      search:
+        hide: false
+      traceQuery:
+        timeShiftEnabled: true
+        spanStartTimeShift: -5m
+        spanEndTimeShift: 5m
+      streamingEnabled:
+        search: true
+        metrics: true

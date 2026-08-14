@@ -12,6 +12,7 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.springframework.ai.chat.client.ChatClient;
@@ -22,20 +23,31 @@ import org.springframework.ai.chat.model.ChatResponse;
 public final class SpringAiLlmGateway implements LlmGateway {
   private static final String LOCAL_MODEL = "LOCAL_MODEL";
   private static final String EXTERNAL_LLM = "EXTERNAL_LLM";
+  private static final Executor DIRECT_EXECUTOR = Runnable::run;
 
   private final ChatClient chatClient;
   private final LlmProperties properties;
   private final EgressGuard egressGuard;
+  private final Executor executor;
 
   public SpringAiLlmGateway(final ChatClient chatClient, final LlmProperties properties) {
-    this(chatClient, properties, new DefaultEgressGuard());
+    this(chatClient, properties, new DefaultEgressGuard(), DIRECT_EXECUTOR);
   }
 
   public SpringAiLlmGateway(
       final ChatClient chatClient, final LlmProperties properties, final EgressGuard egressGuard) {
+    this(chatClient, properties, egressGuard, DIRECT_EXECUTOR);
+  }
+
+  public SpringAiLlmGateway(
+      final ChatClient chatClient,
+      final LlmProperties properties,
+      final EgressGuard egressGuard,
+      final Executor executor) {
     this.chatClient = Objects.requireNonNull(chatClient, "chatClient");
     this.properties = Objects.requireNonNull(properties, "properties");
     this.egressGuard = Objects.requireNonNull(egressGuard, "egressGuard");
+    this.executor = Objects.requireNonNull(executor, "executor");
   }
 
   @Override
@@ -53,7 +65,8 @@ public final class SpringAiLlmGateway implements LlmGateway {
                       .user(request.userPrompt())
                       .call();
               return new SpringAiCallResult(response.content(), response.chatResponse());
-            });
+            },
+            executor);
     try {
       final SpringAiCallResult result =
           call.get(metadata.timeout().toMillis(), TimeUnit.MILLISECONDS);

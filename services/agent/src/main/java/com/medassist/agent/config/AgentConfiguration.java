@@ -22,9 +22,10 @@ import com.medassist.agent.llm.LlmGateway;
 import com.medassist.agent.security.PromptInjectionDetector;
 import com.medassist.agent.trajectory.InMemoryTrajectoryRecorder;
 import com.medassist.agent.trajectory.TrajectoryRecorder;
+import com.medassist.common.context.ExecutorFactory;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Clock;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -48,8 +49,7 @@ public class AgentConfiguration {
 
   @Bean(name = "agentToolExecutorExecutor", destroyMethod = "shutdown")
   ExecutorService agentToolExecutorExecutor(final AgentExecutionProperties properties) {
-    return Executors.newFixedThreadPool(
-        properties.parallelism(), Thread.ofPlatform().name("agent-tool-", 0).factory());
+    return ExecutorFactory.newVirtualThreadPerTaskExecutor();
   }
 
   @Bean
@@ -76,13 +76,17 @@ public class AgentConfiguration {
       @Qualifier("structuredQueryToolBackend")
           final ObjectProvider<ToolBackend> structuredQueryBackend,
       final RetrievalProperties properties,
-      @Qualifier("agentToolExecutorExecutor") final ExecutorService executor) {
+      final AgentExecutionProperties executionProperties,
+      @Qualifier("agentToolExecutorExecutor") final ExecutorService executor,
+      final MeterRegistry meterRegistry) {
     return new DefaultAgentToolExecutor(
         new com.medassist.agent.routing.DefaultToolRegistry(),
         retrievalBackend.getIfAvailable(),
         structuredQueryBackend.getIfAvailable(),
         properties.timeout(),
-        executor);
+        executor,
+        executionProperties.parallelism(),
+        meterRegistry);
   }
 
   @Bean

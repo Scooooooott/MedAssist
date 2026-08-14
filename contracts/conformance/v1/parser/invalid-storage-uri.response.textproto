@@ -1,0 +1,6 @@
+parse_status: PARSE_STATUS_FAILED
+error {
+  code: "INVALID_STORAGE_URI"
+  message: "storage_uri must reference an object-store URI"
+  attributes { key: "scheme" value: "file" }
+}

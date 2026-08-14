@@ -19,6 +19,14 @@ The shared settings prefix is `MEDASSIST_`:
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
+| `MEDASSIST_GRPC_WORKERS` | `4` | Synchronous gRPC dispatch threads |
+| `MEDASSIST_GRPC_MAX_CONCURRENT_RPCS` | `12` | Hard server-side RPC concurrency cap |
+| `MEDASSIST_QUERY_WORKER_THREADS` | `2` | Dedicated online query/rerank inference threads |
+| `MEDASSIST_WORKER_THREADS` | `2` | Passage inference worker threads |
+| `MEDASSIST_WORK_QUEUE_CAPACITY` | `8` | Passage queue bound; query queue capacity is always zero |
+| `MEDASSIST_RUNTIME_INTRA_OP_THREADS` | `1` | ONNX/native intra-op threads per inference |
+| `MEDASSIST_RUNTIME_INTER_OP_THREADS` | `1` | ONNX inter-op threads per inference |
+| `MEDASSIST_METRICS_PORT` | `9103` | Prometheus HTTP endpoint; `0` disables it |
 | `MEDASSIST_BACKEND` | `onnx-int8` | Production backend selector |
 | `MEDASSIST_MODEL_PATH` | unset | Path to the quantized ONNX model |
 | `MEDASSIST_TOKENIZER_PATH` | unset | Path to `tokenizer.json` |
@@ -51,6 +59,20 @@ The `Embed` contract accepts `EMBEDDING_INPUT_TYPE_QUERY` and
 `EMBEDDING_INPUT_TYPE_PASSAGE`. Inputs are truncated to `max_length`, pooled
 with the attention mask, and L2-normalized. The configured dimension must match
 the ONNX output.
+
+## Concurrency model
+
+The service is one process so model weights are loaded once. Synchronous gRPC
+dispatch hands inference to bounded thread pools. Query and rerank work use a
+dedicated zero-queue pool: when all query workers are busy, the request is
+rejected immediately with `RESOURCE_EXHAUSTED`. Passage work uses a separate
+bounded queue and preserves the configured ONNX per-request batching. This
+prevents ingestion batches from adding queue delay to online query embedding.
+
+The gRPC, worker, queue, ONNX intra-op, and ONNX inter-op limits are all
+explicit. The defaults are executable starting points only and are **NOT
+MEASURED** against the real BGE or reranker assets. No asyncio loop or extra
+model process is used.
 
 ## Rerank profiles and assets
 

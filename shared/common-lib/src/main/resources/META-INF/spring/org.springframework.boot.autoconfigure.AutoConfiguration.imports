@@ -1,0 +1,4 @@
+com.medassist.common.compat.Jackson2CompatibilityAutoConfiguration
+com.medassist.common.security.ServletResourceServerAutoConfiguration
+com.medassist.common.resilience.DegradationObservabilityAutoConfiguration
+com.medassist.common.resilience.ResilienceAutoConfiguration

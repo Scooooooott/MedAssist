@@ -1,0 +1,10 @@
+metadata {
+  trace_id: "0123456789abcdef0123456789abcdef"
+  request_id: "request-parser-001"
+  actor: "fixture-user"
+  role: "CLINICIAN"
+}
+storage_uri: "s3://medical-fixtures/report.md"
+mime_type: "text/markdown"
+source_id: "source-001"
+options { key: "language" value: "en" }

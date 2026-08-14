@@ -21,6 +21,8 @@ import com.medassist.ingestion.pipeline.model.ProcessingStatus;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -184,6 +186,44 @@ class ParseAndDeidentifyProcessorTest {
     assertFalse(called.get());
   }
 
+  @Test
+  void quarantinesWhenObjectChangesAfterDiscoveryBeforeParsing() throws Exception {
+    final byte[] changedContent = "changed medical document".getBytes(StandardCharsets.UTF_8);
+    final ObjectDescriptor descriptor =
+        new ObjectDescriptor(
+            URI.create("s3://raw/source-1"),
+            "source-1",
+            "text/plain",
+            changedContent.length,
+            Map.of(),
+            () -> new ByteArrayInputStream(changedContent));
+    final ObjectDiscoveryResult discovery =
+        new ObjectDiscoveryResult(
+            descriptor,
+            sha256("discovered medical document"),
+            Optional.empty(),
+            DiscoveryClassification.NEW,
+            true);
+    final IngestionWorkItem workItem =
+        new IngestionWorkItem(discovery, UUID.randomUUID(), UUID.randomUUID());
+    final AtomicReference<Boolean> parserCalled = new AtomicReference<>(false);
+
+    final ParseAndDeidentifyState result =
+        processor(
+                request -> {
+                  parserCalled.set(true);
+                  return new ParserResponse(document(), ParseStatus.SUCCEEDED, List.of());
+                },
+                request -> response(request.text()))
+            .process(workItem);
+
+    assertEquals(ProcessingStatus.QUARANTINED, result.status());
+    assertEquals(FailureStage.PARSE, result.failureStage());
+    assertEquals("object content changed since discovery", result.failureReason());
+    assertFalse(result.failureReason().contains("changed medical document"));
+    assertFalse(parserCalled.get());
+  }
+
   private static ParseAndDeidentifyProcessor processor(
       final ParserClient parser, final DeidentificationClient deid) {
     return new ParseAndDeidentifyProcessor(parser, deid, TIMEOUT, "SAFE_HARBOR_REDACT");
@@ -284,13 +324,24 @@ class ParseAndDeidentifyProcessorTest {
             URI.create("s3://raw/source-1"),
             "source-1",
             "text/plain",
-            10,
+            "synthetic".length(),
             Map.of("tenant", "synthetic"),
             () -> new ByteArrayInputStream("synthetic".getBytes(StandardCharsets.UTF_8)));
     final ObjectDiscoveryResult discovery =
         new ObjectDiscoveryResult(
-            descriptor, "hash-1", Optional.empty(), DiscoveryClassification.NEW, true);
+            descriptor, sha256("synthetic"), Optional.empty(), DiscoveryClassification.NEW, true);
     return new IngestionWorkItem(discovery, UUID.randomUUID(), UUID.randomUUID());
+  }
+
+  private static String sha256(final String content) {
+    try {
+      return java.util.HexFormat.of()
+          .formatHex(
+              MessageDigest.getInstance("SHA-256")
+                  .digest(content.getBytes(StandardCharsets.UTF_8)));
+    } catch (final NoSuchAlgorithmException exception) {
+      throw new AssertionError("SHA-256 is required by the Java runtime", exception);
+    }
   }
 
   private static DocumentIR document() {

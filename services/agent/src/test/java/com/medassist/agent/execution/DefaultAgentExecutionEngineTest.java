@@ -209,8 +209,7 @@ class DefaultAgentExecutionEngineTest {
             new DefaultAgentToolExecutor(
                 new DefaultToolRegistry(),
                 request -> {
-                  throw new IllegalStateException(
-                      "tool unavailable: " + request.toolName());
+                  throw new IllegalStateException("tool unavailable: " + request.toolName());
                 }),
             ignored -> {
               generationCalls.incrementAndGet();
@@ -228,7 +227,8 @@ class DefaultAgentExecutionEngineTest {
     assertEquals(TerminationReason.ABSTAINED, result.state().terminationReason());
     assertEquals(0, generationCalls.get());
     assertTrue(result.abstained());
-    assertTrue(result.state().toolCalls().stream().allMatch(call -> "FAILED".equals(call.status())));
+    assertTrue(
+        result.state().toolCalls().stream().allMatch(call -> "FAILED".equals(call.status())));
   }
 
   private AgentState state() {

@@ -16,7 +16,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.metadata.ChatResponseMetadata;
@@ -57,6 +61,27 @@ class LlmGatewayTest {
     assertThat(response.cost()).isEqualTo(LlmCost.unknown(response.metadata()));
     assertThat(request.toString()).doesNotContain("secret clinical question");
     assertThat(response.toString()).doesNotContain("safe answer");
+  }
+
+  @Test
+  void injectedExecutorRunsProviderCall() {
+    final ChatClient chatClient = mock(ChatClient.class, RETURNS_DEEP_STUBS);
+    final ChatClient.CallResponseSpec callResponse = mock(ChatClient.CallResponseSpec.class);
+    when(chatClient.prompt().system(anyString()).user(anyString()).call()).thenReturn(callResponse);
+    when(callResponse.content()).thenReturn("safe answer");
+    when(callResponse.chatResponse()).thenReturn(null);
+    final AtomicBoolean executorUsed = new AtomicBoolean();
+    final Executor executor =
+        command -> {
+          executorUsed.set(true);
+          command.run();
+        };
+    final SpringAiLlmGateway gateway =
+        new SpringAiLlmGateway(chatClient, PROPERTIES, new DefaultEgressGuard(), executor);
+
+    gateway.complete(new LlmRequest("system", "question"));
+
+    assertThat(executorUsed).isTrue();
   }
 
   @Test
@@ -215,13 +240,16 @@ class LlmGatewayTest {
             });
     final LlmProperties properties =
         new LlmProperties(true, "test-provider", "test-model", Duration.ofMillis(25), 0, 0);
-    final SpringAiLlmGateway gateway = new SpringAiLlmGateway(chatClient, properties);
+    try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      final SpringAiLlmGateway gateway =
+          new SpringAiLlmGateway(chatClient, properties, new DefaultEgressGuard(), executor);
 
-    assertThatThrownBy(() -> gateway.complete(new LlmRequest("system", "question")))
-        .isInstanceOf(LlmGatewayException.class)
-        .extracting(exception -> ((LlmGatewayException) exception).reason())
-        .isEqualTo(LlmFailureReason.TIMEOUT);
-    assertThat(started.await(1, TimeUnit.SECONDS)).isTrue();
-    release.countDown();
+      assertThatThrownBy(() -> gateway.complete(new LlmRequest("system", "question")))
+          .isInstanceOf(LlmGatewayException.class)
+          .extracting(exception -> ((LlmGatewayException) exception).reason())
+          .isEqualTo(LlmFailureReason.TIMEOUT);
+      assertThat(started.await(1, TimeUnit.SECONDS)).isTrue();
+      release.countDown();
+    }
   }
 }

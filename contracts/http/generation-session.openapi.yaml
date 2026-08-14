@@ -1,0 +1,253 @@
+openapi: 3.1.0
+info:
+  title: MedAssist Generation Session API
+  version: 1.0.0
+  description: >-
+    Contract-first surface for authenticated generation sessions. Event payloads contain only
+    approved, bounded client output and safe metadata; raw queries, provider payloads, and full
+    retrieval candidates are excluded.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+paths:
+  /api/generations:
+    post:
+      operationId: createGeneration
+      summary: Create or idempotently retry a generation session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationCreateRequest'
+      responses:
+        '201':
+          description: Generation session accepted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationSession'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/IdempotencyConflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /api/generations/{generation_id}:
+    get:
+      operationId: getGeneration
+      summary: Read an owned generation session status
+      parameters:
+        - $ref: '#/components/parameters/GenerationId'
+      responses:
+        '200':
+          description: Current session status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationSession'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Expired'
+    delete:
+      operationId: cancelGeneration
+      summary: Cancel an owned running generation session
+      parameters:
+        - $ref: '#/components/parameters/GenerationId'
+      responses:
+        '202':
+          description: Cancellation accepted; a replayable cancelled terminal event will follow.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/TerminalConflict'
+  /api/generations/{generation_id}/events:
+    get:
+      operationId: streamGenerationEvents
+      summary: Subscribe to or resume an owned generation event stream
+      parameters:
+        - $ref: '#/components/parameters/GenerationId'
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Resume cursor; events after this ID are replayed without duplication.
+      responses:
+        '200':
+          description: Server-sent event stream.
+          content:
+            text/event-stream:
+              schema:
+                $ref: '#/components/schemas/GenerationEvent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          $ref: '#/components/responses/Expired'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    GenerationId:
+      name: generation_id
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 22
+        maxLength: 128
+        pattern: '^[A-Za-z0-9_-]+$'
+  responses:
+    BadRequest:
+      description: Invalid request.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Unauthorized:
+      description: Missing or invalid authentication.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Forbidden:
+      description: The caller does not own or may not access this session.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    NotFound:
+      description: Session does not exist or is not visible to the caller.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    Expired:
+      description: Session event retention has expired.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    RateLimited:
+      description: Request rate or active-session limit exceeded.
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    IdempotencyConflict:
+      description: Idempotency key was reused with a different request.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TerminalConflict:
+      description: The session is already terminal.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+  schemas:
+    GenerationCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [query, idempotency_key]
+      properties:
+        query:
+          type: string
+          minLength: 1
+          maxLength: 20000
+        filters:
+          type: object
+          additionalProperties: false
+        idempotency_key:
+          type: string
+          minLength: 16
+          maxLength: 128
+          pattern: '^[A-Za-z0-9._:-]+$'
+    GenerationSession:
+      type: object
+      additionalProperties: false
+      required: [generation_id, status, expires_at, events_url]
+      properties:
+        generation_id:
+          type: string
+        status:
+          $ref: '#/components/schemas/GenerationStatus'
+        expires_at:
+          type: string
+          format: date-time
+        events_url:
+          type: string
+          format: uri-reference
+        terminal_event_id:
+          type: string
+    GenerationStatus:
+      type: string
+      enum: [CREATED, RUNNING, COMPLETED, FAILED, CANCELLED, EXPIRED]
+    GenerationEvent:
+      type: object
+      additionalProperties: false
+      required: [event_id, generation_id, type, schema_version, created_at, payload]
+      properties:
+        event_id:
+          type: string
+        generation_id:
+          type: string
+        type:
+          type: string
+          enum: [accepted, delta, citation, degradation, final, error, cancelled]
+        schema_version:
+          type: string
+          const: '1'
+        created_at:
+          type: string
+          format: date-time
+        payload:
+          type: object
+          description: >-
+            Safe event payload. A delta is an approved bounded text chunk, never an unchecked draft.
+          additionalProperties: true
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [type, title, status, code]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+        title:
+          type: string
+        status:
+          type: integer
+        code:
+          type: string
+        detail:
+          type: string
+        instance:
+          type: string
+          format: uri-reference

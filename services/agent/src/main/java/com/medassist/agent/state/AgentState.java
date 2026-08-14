@@ -19,7 +19,7 @@ import java.util.Set;
 public final class AgentState implements Serializable {
   @Serial private static final long serialVersionUID = 1L;
 
-  public static final String CURRENT_STATE_VERSION = "agent-state-v2";
+  public static final String CURRENT_STATE_VERSION = "agent-state-v3";
 
   private final String stateVersion;
   private final String traceId;
@@ -27,6 +27,7 @@ public final class AgentState implements Serializable {
   private final String deidentifiedQuery;
   private final String queryHash;
   private final Role role;
+  private final AgentRetrievalFilters retrievalFilters;
   private QueryClassification classification;
   private Set<String> allowedTools;
   private List<ChunkCandidateMetadata> candidateChunks;
@@ -47,13 +48,15 @@ public final class AgentState implements Serializable {
       final String requestId,
       final String deidentifiedQuery,
       final String queryHash,
-      final Role role) {
+      final Role role,
+      final AgentRetrievalFilters retrievalFilters) {
     this.stateVersion = Objects.requireNonNull(stateVersion, "stateVersion");
     this.traceId = Objects.requireNonNull(traceId, "traceId");
     this.requestId = Objects.requireNonNull(requestId, "requestId");
     this.deidentifiedQuery = Objects.requireNonNull(deidentifiedQuery, "deidentifiedQuery");
     this.queryHash = Objects.requireNonNull(queryHash, "queryHash");
     this.role = Objects.requireNonNull(role, "role");
+    this.retrievalFilters = Objects.requireNonNull(retrievalFilters, "retrievalFilters");
     this.classification = QueryClassification.UNKNOWN;
     this.allowedTools = Set.of();
     this.candidateChunks = List.of();
@@ -67,6 +70,14 @@ public final class AgentState implements Serializable {
 
   public static AgentState start(
       final RequestIds requestIds, final DeidentifiedQuery query, final Role role) {
+    return start(requestIds, query, role, AgentRetrievalFilters.empty());
+  }
+
+  public static AgentState start(
+      final RequestIds requestIds,
+      final DeidentifiedQuery query,
+      final Role role,
+      final AgentRetrievalFilters retrievalFilters) {
     Objects.requireNonNull(requestIds, "requestIds");
     Objects.requireNonNull(query, "query");
     return new AgentState(
@@ -75,7 +86,8 @@ public final class AgentState implements Serializable {
         requestIds.requestId(),
         query.value(),
         query.originalQueryHash(),
-        role);
+        role,
+        retrievalFilters);
   }
 
   public static AgentState restore(final AgentStateProjection projection) {
@@ -87,7 +99,8 @@ public final class AgentState implements Serializable {
             projection.requestId(),
             projection.deidentifiedQuery(),
             projection.queryHash(),
-            projection.role());
+            projection.role(),
+            projection.retrievalFilters());
     state.classification = projection.classification();
     state.allowedTools = Set.copyOf(projection.allowedTools());
     state.candidateChunks = List.copyOf(projection.candidateChunks());
@@ -124,6 +137,10 @@ public final class AgentState implements Serializable {
 
   public Role role() {
     return role;
+  }
+
+  public AgentRetrievalFilters retrievalFilters() {
+    return retrievalFilters;
   }
 
   public QueryClassification classification() {
@@ -273,6 +290,7 @@ public final class AgentState implements Serializable {
         deidentifiedQuery,
         queryHash,
         role,
+        retrievalFilters,
         classification,
         allowedTools,
         candidateChunks,

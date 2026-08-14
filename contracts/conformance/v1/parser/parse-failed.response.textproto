@@ -1,0 +1,6 @@
+parse_status: PARSE_STATUS_FAILED
+error {
+  code: "PARSE_FAILED"
+  message: "the parser produced no document content"
+  attributes { key: "format" value: "md" }
+}

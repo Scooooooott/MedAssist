@@ -11,4 +11,4 @@ public record DocumentVersionView(
     String status,
     UUID supersededBy,
     String publisher,
-    boolean stale) {}
+    Boolean stale) {}

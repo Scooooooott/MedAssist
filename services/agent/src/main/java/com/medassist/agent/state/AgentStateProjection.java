@@ -15,6 +15,7 @@ public record AgentStateProjection(
     String deidentifiedQuery,
     String queryHash,
     Role role,
+    AgentRetrievalFilters retrievalFilters,
     QueryClassification classification,
     Set<String> allowedTools,
     List<ChunkCandidateMetadata> candidateChunks,
@@ -36,6 +37,7 @@ public record AgentStateProjection(
     Objects.requireNonNull(deidentifiedQuery, "deidentifiedQuery");
     Objects.requireNonNull(queryHash, "queryHash");
     Objects.requireNonNull(role, "role");
+    Objects.requireNonNull(retrievalFilters, "retrievalFilters");
     Objects.requireNonNull(classification, "classification");
     Objects.requireNonNull(allowedTools, "allowedTools");
     Objects.requireNonNull(candidateChunks, "candidateChunks");

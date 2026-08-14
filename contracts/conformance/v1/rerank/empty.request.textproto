@@ -1,0 +1,4 @@
+metadata { trace_id: "rerank-empty" request_id: "rerank-empty" actor: "fixture-user" role: "CLINICIAN" }
+query: ""
+candidates { id: "candidate" text: "synthetic text" metadata { key: "section" value: "test" } }
+model_name: "fixture-reranker"

@@ -1,6 +1,13 @@
 spring:
   application:
     name: clinical-data
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    hikari:
+      maximum-pool-size: ${MEDASSIST_CLINICAL_DB_POOL_SIZE:8}
+      connection-timeout: ${MEDASSIST_CLINICAL_DB_CONNECTION_TIMEOUT_MS:250}
 server:
   port: 8083
 clinical-data:
@@ -16,11 +23,25 @@ clinical-data:
       - clinical_research_condition_counts
       - clinical_research_observation_counts
       - clinical_research_encounter_counts
+medassist:
+  audit:
+    client:
+      enabled: ${MEDASSIST_AUDIT_CLIENT_ENABLED:false}
+  security:
+    jwk-set-uri: "${MEDASSIST_JWK_SET_URI:http://localhost:8087/realms/medassist/protocol/openid-connect/certs}"
 logging:
   pattern:
-    level: "%5p [trace_id=%X{trace_id:-}]"
+    level: "%5p [trace_id=%X{traceId:-} span_id=%X{spanId:-}]"
 management:
+  tracing:
+    sampling:
+      probability: ${MEDASSIST_TRACING_SAMPLING_PROBABILITY:1.0}
+  opentelemetry:
+    tracing:
+      export:
+        otlp:
+          endpoint: ${MEDASSIST_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,metrics,prometheus

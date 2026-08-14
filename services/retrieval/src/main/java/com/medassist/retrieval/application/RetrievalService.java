@@ -1,5 +1,10 @@
 package com.medassist.retrieval.application;
 
+import com.medassist.common.resilience.Degradation;
+import com.medassist.common.resilience.DegradationRecorder;
+import com.medassist.common.resilience.FallbackMode;
+import com.medassist.common.resilience.ResilienceComponent;
+import com.medassist.common.resilience.ResilienceExecutor;
 import com.medassist.retrieval.api.dto.RetrievalFiltersDto;
 import com.medassist.retrieval.api.dto.SearchRequest;
 import com.medassist.retrieval.application.model.RetrievalFilters;
@@ -17,11 +22,14 @@ import com.medassist.retrieval.rerank.RerankingResult;
 import com.medassist.retrieval.rerank.RerankingService;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -34,7 +42,10 @@ public class RetrievalService {
   private final RrfFusion rrfFusion;
   private final RerankingService rerankingService;
   private final ExecutorService retrievalExecutor;
+  private final DegradationRecorder degradationRecorder;
+  private final ResilienceExecutor resilienceExecutor;
 
+  @Autowired
   public RetrievalService(
       final RetrievalProperties properties,
       final QueryEmbeddingClient embeddingClient,
@@ -42,7 +53,9 @@ public class RetrievalService {
       final LexicalSearchRepository lexicalSearchRepository,
       final RrfFusion rrfFusion,
       final RerankingService rerankingService,
-      final ExecutorService retrievalExecutor) {
+      @Qualifier("retrievalExecutor") final ExecutorService retrievalExecutor,
+      final Optional<DegradationRecorder> degradationRecorder,
+      final ResilienceExecutor resilienceExecutor) {
     this.properties = properties;
     this.embeddingClient = embeddingClient;
     this.vectorSearchRepository = vectorSearchRepository;
@@ -50,6 +63,8 @@ public class RetrievalService {
     this.rrfFusion = rrfFusion;
     this.rerankingService = rerankingService;
     this.retrievalExecutor = retrievalExecutor;
+    this.degradationRecorder = degradationRecorder.orElseGet(DegradationRecorder::noop);
+    this.resilienceExecutor = resilienceExecutor;
   }
 
   public SearchOutcome search(final SearchRequest request) {
@@ -65,17 +80,28 @@ public class RetrievalService {
   private SearchOutcome vectorOnly(final SearchQuery query, final long started) {
     final VectorBranch branch = vectorBranch(query);
     return finish(
-        query, branch.chunks(), branch.embeddingMs(), branch.retrievalMs(), false, List.of());
+        query,
+        branch.chunks(),
+        branch.embeddingMs(),
+        branch.retrievalMs(),
+        false,
+        List.of(),
+        List.of());
   }
 
   private SearchOutcome lexicalOnly(final SearchQuery query, final long started) {
     final List<RetrievedChunk> candidates =
-        lexicalSearchRepository
-            .search(withCandidateTopN(query, lexicalCandidateTopN(query)))
+        resilienceExecutor
+            .execute(
+                ResilienceComponent.LEXICAL_RETRIEVAL,
+                true,
+                () ->
+                    lexicalSearchRepository.search(
+                        withCandidateTopN(query, lexicalCandidateTopN(query))))
             .stream()
             .map(RankedChunk::chunk)
             .toList();
-    return finish(query, candidates, 0L, elapsedMillis(started), false, List.of());
+    return finish(query, candidates, 0L, elapsedMillis(started), false, List.of(), List.of());
   }
 
   private SearchOutcome hybrid(final SearchQuery query, final long started) {
@@ -85,8 +111,12 @@ public class RetrievalService {
     final CompletableFuture<List<RankedChunk>> lexicalFuture =
         CompletableFuture.supplyAsync(
             () ->
-                lexicalSearchRepository.search(
-                    withCandidateTopN(query, lexicalCandidateTopN(query))),
+                resilienceExecutor.execute(
+                    ResilienceComponent.LEXICAL_RETRIEVAL,
+                    true,
+                    () ->
+                        lexicalSearchRepository.search(
+                            withCandidateTopN(query, lexicalCandidateTopN(query)))),
             retrievalExecutor);
 
     final VectorBranch vector;
@@ -102,18 +132,28 @@ public class RetrievalService {
 
     final List<RankedChunk> lexical;
     final List<String> degradationReasons = new ArrayList<>();
+    final List<Degradation> degradations = new ArrayList<>();
     try {
       lexical = getBeforeDeadline(lexicalFuture, deadline);
     } catch (final RuntimeException exception) {
       lexicalFuture.cancel(true);
-      degradationReasons.add("LEXICAL_CHANNEL_FAILED");
+      final Degradation degradation =
+          new Degradation(
+              "LEXICAL_CHANNEL_FAILED",
+              "LEXICAL_RETRIEVAL",
+              FallbackMode.VECTOR_RESULTS,
+              "lexical retrieval unavailable; vector results retained");
+      degradationReasons.add(degradation.code());
+      degradations.add(degradation);
+      degradationRecorder.record(ResilienceComponent.LEXICAL_RETRIEVAL, degradation);
       return finish(
           query,
           vector.chunks(),
           vector.embeddingMs(),
           elapsedMillis(started),
           true,
-          degradationReasons);
+          degradationReasons,
+          degradations);
     }
 
     final List<RankedChunk> rankedVector = new ArrayList<>();
@@ -129,7 +169,8 @@ public class RetrievalService {
             properties.getRrfK(),
             properties.getVectorWeight(),
             properties.getLexicalWeight());
-    return finish(query, fused, vector.embeddingMs(), elapsedMillis(started), false, List.of());
+    return finish(
+        query, fused, vector.embeddingMs(), elapsedMillis(started), false, List.of(), List.of());
   }
 
   private SearchOutcome finish(
@@ -138,7 +179,8 @@ public class RetrievalService {
       final long embeddingMs,
       final long retrievalMs,
       final boolean degraded,
-      final List<String> degradationReasons) {
+      final List<String> degradationReasons,
+      final List<Degradation> degradations) {
     final RerankingResult reranked =
         rerankingService.rerank(
             query.query(),
@@ -148,8 +190,17 @@ public class RetrievalService {
             properties.getRerank().getModelName(),
             properties.getRerank().getTimeout());
     final List<String> reasons = new ArrayList<>(degradationReasons);
+    final List<Degradation> structured = new ArrayList<>(degradations);
     if (reranked.degraded()) {
-      reasons.add("RERANK_" + reranked.reason());
+      final Degradation degradation =
+          new Degradation(
+              "RERANK_" + reranked.reason(),
+              "RERANK",
+              FallbackMode.ORIGINAL_ORDER,
+              "reranker unavailable; original retrieval order retained");
+      reasons.add(degradation.code());
+      structured.add(degradation);
+      degradationRecorder.record(ResilienceComponent.RERANK, degradation);
     }
     return new SearchOutcome(
         query,
@@ -157,16 +208,24 @@ public class RetrievalService {
         embeddingMs,
         retrievalMs,
         degraded || reranked.degraded(),
-        reasons);
+        reasons,
+        structured);
   }
 
   private VectorBranch vectorBranch(final SearchQuery query) {
     final QueryEmbedding embedding =
-        embeddingClient.embed(query.query(), query.modelName(), query.modelVersion());
+        resilienceExecutor.execute(
+            ResilienceComponent.EMBEDDING,
+            true,
+            () -> embeddingClient.embed(query.query(), query.modelName(), query.modelVersion()));
     final long retrievalStarted = System.nanoTime();
     final List<RetrievedChunk> chunks =
-        vectorSearchRepository.search(
-            withCandidateTopN(query, vectorCandidateTopN(query)), embedding);
+        resilienceExecutor.execute(
+            ResilienceComponent.VECTOR_RETRIEVAL,
+            true,
+            () ->
+                vectorSearchRepository.search(
+                    withCandidateTopN(query, vectorCandidateTopN(query)), embedding));
     return new VectorBranch(
         chunks, embedding.elapsedMs(), (System.nanoTime() - retrievalStarted) / 1_000_000L);
   }

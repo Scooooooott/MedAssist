@@ -4,7 +4,7 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-final class SensitiveContentScanner {
+public final class SensitiveContentScanner {
   private static final Pattern PHI_MARKER =
       Pattern.compile("(?i)\\b(?:phi|protected health information|personal health information)\\b");
   private static final Pattern PATIENT_ID =
@@ -28,7 +28,7 @@ final class SensitiveContentScanner {
 
   private SensitiveContentScanner() {}
 
-  static Set<SensitiveFinding> find(final String payload) {
+  public static Set<SensitiveFinding> find(final String payload) {
     final EnumSet<SensitiveFinding> findings = EnumSet.noneOf(SensitiveFinding.class);
     if (payload == null || payload.isBlank()) {
       return Set.copyOf(findings);

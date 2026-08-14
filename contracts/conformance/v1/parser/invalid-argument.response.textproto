@@ -1,0 +1,5 @@
+parse_status: PARSE_STATUS_FAILED
+error {
+  code: "INVALID_ARGUMENT"
+  message: "storage_uri is required"
+}

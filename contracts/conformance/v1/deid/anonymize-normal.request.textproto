@@ -1,0 +1,4 @@
+metadata { trace_id: "deid-anonymize" request_id: "deid-anonymize" actor: "fixture-user" role: "CLINICIAN" }
+text: "alice@example.test"
+policy: DEID_POLICY_SAFE_HARBOR_REDACT
+options { key: "document_key" value: "fixture-document" }

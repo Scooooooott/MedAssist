@@ -33,13 +33,13 @@ public final class DefaultQueryClassifier implements QueryClassifier {
           "thank you",
           "how are you",
           "what's up",
-          "你好",
-          "谢谢",
-          "闲聊",
-          "天气",
-          "股票",
-          "体育",
-          "旅游");
+          "\u6d63\u72b2\u30bd",
+          "\u748b\u3223\u963f",
+          "\u95c2\u8336\u4eb0",
+          "\u6fb6\u2542\u76b5",
+          "\u9472\uff04\u30a8",
+          "\u6d63\u64b9\u505b",
+          "\u93c3\u546e\u7236");
 
   private static final Set<String> POLICY_SIGNALS =
       Set.of(
@@ -57,12 +57,12 @@ public final class DefaultQueryClassifier implements QueryClassifier {
           "drug label",
           "formulary",
           "sop",
-          "政策",
-          "指南",
-          "规范",
-          "规程",
-          "合规",
-          "药品说明书");
+          "\u93c0\u8de8\u74e5",
+          "\u93b8\u56e7\u5d21",
+          "\u7459\u52ee\u5bd6",
+          "\u7459\u52ed\u25bc",
+          "\u935a\u5823\ue749",
+          "\u947d\ue21a\u6427\u7487\u5b58\u69d1\u6d94");
 
   private static final Set<String> CLINICAL_SIGNALS =
       Set.of(
@@ -92,16 +92,16 @@ public final class DefaultQueryClassifier implements QueryClassifier {
           "cough",
           "blood pressure",
           "lab result",
-          "病例",
-          "症状",
-          "患者",
-          "诊断",
-          "治疗",
-          "药物",
-          "药",
-          "剂量",
-          "副作用",
-          "疾病");
+          "\u9425\u546c\u7de5",
+          "\u9425\u56e9\u59f8",
+          "\u93ae\uff48\u20ac",
+          "\u7487\u5a43\u67c7",
+          "\u5a0c\u8364\u679f",
+          "\u947d\ue21c\u58bf",
+          "\u947d",
+          "\u9353\u509e\u567a",
+          "\u9353\ue219\u7d94\u9422",
+          "\u9424\u5267\u68be");
 
   private static final Set<String> STRUCTURED_SIGNALS =
       Set.of(
@@ -126,16 +126,16 @@ public final class DefaultQueryClassifier implements QueryClassifier {
           "backlog",
           "how many",
           "number of",
-          "统计",
-          "聚合",
-          "队列",
-          "分组",
-          "数量",
-          "总数",
-          "分布",
-          "比例",
-          "均值",
-          "平均");
+          "\u7f01\u71bb\ue178",
+          "\u9471\u6c2c\u608e",
+          "\u95c3\u71b7\u57aa",
+          "\u9352\u55d9\u7c8d",
+          "\u93c1\u4f34\u567a",
+          "\u93ac\u7ed8\u669f",
+          "\u9352\u55d7\u7af7",
+          "\u59e3\u65be\u7de5",
+          "\u9367\u56e7\u20ac",
+          "\u9a9e\u51b2\u6f4e");
 
   @Override
   public QueryClassification classify(final String query) {
@@ -192,7 +192,7 @@ public final class DefaultQueryClassifier implements QueryClassifier {
   }
 
   private static boolean containsDiagnosisStem(final String query) {
-    return query.contains("diagnos") || query.contains("诊疗");
+    return query.contains("diagnos") || query.contains("\u7487\u5a44\u679f");
   }
 
   private static boolean isStronglyStructured(final String query) {
@@ -220,15 +220,15 @@ public final class DefaultQueryClassifier implements QueryClassifier {
             "backlog",
             "how many",
             "number of",
-            "统计",
-            "聚合",
-            "队列",
-            "分组",
-            "数量",
-            "总数",
-            "分布",
-            "比例",
-            "均值",
-            "平均"));
+            "\u7f01\u71bb\ue178",
+            "\u9471\u6c2c\u608e",
+            "\u95c3\u71b7\u57aa",
+            "\u9352\u55d9\u7c8d",
+            "\u93c1\u4f34\u567a",
+            "\u93ac\u7ed8\u669f",
+            "\u9352\u55d7\u7af7",
+            "\u59e3\u65be\u7de5",
+            "\u9367\u56e7\u20ac",
+            "\u9a9e\u51b2\u6f4e"));
   }
 }

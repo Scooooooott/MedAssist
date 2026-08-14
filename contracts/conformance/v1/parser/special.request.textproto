@@ -1,0 +1,5 @@
+metadata { trace_id: "special-parser" request_id: "special-parser" actor: "fixture-user" role: "CLINICIAN" }
+storage_uri: "s3://medical-fixtures/%E5%BF%83%E8%87%9F-%F0%9F%A9%BA.md"
+mime_type: "text/markdown; charset=utf-8"
+source_id: "patient-\u03b1-\u6d4b\u8bd5"
+options { key: "label" value: "line1\nline2\t\u2713" }

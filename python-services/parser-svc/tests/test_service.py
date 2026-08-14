@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import threading
 import time
 from dataclasses import dataclass, field
 from typing import Any, cast
@@ -8,6 +9,8 @@ from typing import Any, cast
 import grpc
 import pytest
 from medassist.contracts.v1 import parser_pb2
+from medassist_common import BoundedExecutor
+
 from parser_svc.core import LightweightParser, ParsedDocument, ParsedSection
 from parser_svc.object_store import ObjectStoreError, S3ObjectStore, StoredObject
 from parser_svc.pdf import PdfBackendError, build_pdf_backend
@@ -222,3 +225,38 @@ def test_pdf_backend_none_fails_closed_and_unknown_backend_is_rejected() -> None
         build_pdf_backend(ParserSettings(pdf_backend="synthetic"))
 
     assert error.value.code == "PDF_BACKEND_UNSUPPORTED"
+
+
+def test_offline_worker_overload_returns_explicit_rejection() -> None:
+    started = threading.Event()
+    release = threading.Event()
+
+    class BlockingReader:
+        def read(self, storage_uri: str) -> StoredObject:
+            del storage_uri
+            started.set()
+            release.wait(timeout=2)
+            return StoredObject(b"content", "text/plain")
+
+    executor = BoundedExecutor(
+        service_name="parser-svc",
+        process_model="bounded_offline_thread_pool",
+        queue_name="parse-test",
+        max_workers=1,
+        queue_capacity=0,
+    )
+    service = ParserServiceServicer(BlockingReader(), executor=executor)
+    worker = threading.Thread(target=lambda: call(service, request("s3://raw/first.txt")))
+    worker.start()
+    assert started.wait(timeout=1)
+    try:
+        rejected = call(service, request("s3://raw/second.txt"))
+        assert rejected.parse_status == parser_pb2.PARSE_STATUS_FAILED
+        assert rejected.error.code == "RESOURCE_EXHAUSTED"
+        assert rejected.error.attributes["retryable"] == "true"
+        assert service.readiness()
+    finally:
+        release.set()
+        worker.join(timeout=2)
+        executor.shutdown()
+    assert not service.readiness()

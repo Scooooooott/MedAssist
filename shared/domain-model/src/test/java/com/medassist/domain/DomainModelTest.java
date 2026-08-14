@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -16,24 +18,26 @@ import org.junit.jupiter.api.Test;
 class DomainModelTest {
   @Test
   void documentVersionReportsEffectiveAndStaleState() {
+    final Clock clock = fixedClock();
     final DocumentVersion version =
         new DocumentVersion(
             UUID.randomUUID(),
             UUID.randomUUID(),
             "2026-01",
             "sha256:abc",
-            LocalDate.now().minusDays(1),
-            Instant.now().minus(Duration.ofDays(10)),
+            LocalDate.of(2026, 8, 13),
+            Instant.parse("2026-08-14T12:00:00Z"),
             DocumentStatus.ACTIVE,
             null,
             "s3://raw-documents/doc.pdf");
 
-    assertTrue(version.isCurrentlyEffective());
-    assertTrue(version.isStale(Duration.ofDays(1)));
+    assertTrue(version.isCurrentlyEffective(clock));
+    assertTrue(version.isStale(Duration.ofDays(1), clock));
   }
 
   @Test
   void withdrawnDocumentVersionIsNotCurrentlyEffective() {
+    final Clock clock = fixedClock();
     final DocumentVersion version =
         new DocumentVersion(
             UUID.randomUUID(),
@@ -46,7 +50,26 @@ class DomainModelTest {
             null,
             "s3://raw-documents/doc.pdf");
 
-    assertFalse(version.isCurrentlyEffective());
+    assertFalse(version.isCurrentlyEffective(clock));
+  }
+
+  @Test
+  void missingEffectiveDateIsUnknownAndFailsClosed() {
+    final Clock clock = fixedClock();
+    final DocumentVersion version =
+        new DocumentVersion(
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "unknown",
+            "sha256:abc",
+            null,
+            Instant.parse("2026-08-14T12:00:00Z"),
+            DocumentStatus.ACTIVE,
+            null,
+            "s3://raw-documents/doc.pdf");
+
+    assertFalse(version.isCurrentlyEffective(clock));
+    assertFalse(version.isStale(Duration.ofDays(1), clock));
   }
 
   @Test
@@ -172,19 +195,20 @@ class DomainModelTest {
 
   @Test
   void versionFreshnessAndPhiScoresCoverBothBoundaries() {
+    final Clock clock = fixedClock();
     final DocumentVersion futureVersion =
         new DocumentVersion(
             UUID.randomUUID(),
             UUID.randomUUID(),
             "future",
             "sha256:future",
-            LocalDate.now().plusDays(1),
-            Instant.now(),
+            LocalDate.of(2026, 8, 15),
+            Instant.parse("2026-08-14T12:00:00Z"),
             DocumentStatus.ACTIVE,
             null,
             "s3://bucket/future");
-    assertFalse(futureVersion.isCurrentlyEffective());
-    assertFalse(futureVersion.isStale(Duration.ofDays(1)));
+    assertFalse(futureVersion.isCurrentlyEffective(clock));
+    assertFalse(futureVersion.isStale(Duration.ofDays(1), clock));
     assertThrows(NullPointerException.class, () -> futureVersion.isStale(null));
     assertThrows(
         IllegalArgumentException.class, () -> new PhiEntity("PERSON", 0, 1, -0.1D, "presidio"));
@@ -200,5 +224,9 @@ class DomainModelTest {
     assertEquals(3, DocumentStatus.values().length);
     assertEquals(4, RetrievalMethod.values().length);
     assertEquals(3, Role.values().length);
+  }
+
+  private Clock fixedClock() {
+    return Clock.fixed(Instant.parse("2026-08-14T12:00:00Z"), ZoneOffset.UTC);
   }
 }

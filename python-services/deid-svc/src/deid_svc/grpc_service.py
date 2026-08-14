@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 import grpc
-from medassist_common import configure_generated_proto_path
+from medassist_common import BoundedExecutor, WorkRejectedError, configure_generated_proto_path
 
 configure_generated_proto_path()
 
@@ -22,8 +22,16 @@ __all__ = ["DeidService", "deid_pb2_grpc"]
 class DeidService(deid_pb2_grpc.DeidServiceServicer):  # type: ignore[misc]
     """gRPC boundary for the fail-closed de-identification backend."""
 
-    def __init__(self, backend: Deidentifier) -> None:
+    def __init__(
+        self,
+        backend: Deidentifier,
+        executor: BoundedExecutor | None = None,
+    ) -> None:
         self._backend = backend
+        self._executor = executor
+
+    def readiness(self) -> bool:
+        return self._backend.ready and (self._executor is None or self._executor.ready)
 
     def Detect(  # noqa: N802 - generated gRPC method name
         self,
@@ -32,7 +40,20 @@ class DeidService(deid_pb2_grpc.DeidServiceServicer):  # type: ignore[misc]
     ) -> deid_pb2.DetectResponse:
         self._require_ready(context)
         try:
-            entities = self._backend.detect(request.text)
+            entities = (
+                self._backend.detect(request.text)
+                if self._executor is None
+                else self._executor.execute(
+                    "Detect",
+                    "online",
+                    lambda: self._backend.detect(request.text),
+                )
+            )
+        except WorkRejectedError:
+            context.abort(
+                grpc.StatusCode.RESOURCE_EXHAUSTED,
+                "de-identification capacity exhausted; request rejected",
+            )
         except DeidUnavailableError as exc:
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(exc))
         except DeidError:
@@ -56,7 +77,20 @@ class DeidService(deid_pb2_grpc.DeidServiceServicer):  # type: ignore[misc]
         policy = self._policy(request.policy, context)
         document_key = request.options.get("document_key") or None
         try:
-            result = self._backend.anonymize(request.text, policy, document_key)
+            result = (
+                self._backend.anonymize(request.text, policy, document_key)
+                if self._executor is None
+                else self._executor.execute(
+                    "Anonymize",
+                    "online",
+                    lambda: self._backend.anonymize(request.text, policy, document_key),
+                )
+            )
+        except WorkRejectedError:
+            context.abort(
+                grpc.StatusCode.RESOURCE_EXHAUSTED,
+                "de-identification capacity exhausted; request rejected",
+            )
         except DeidUnavailableError as exc:
             context.abort(grpc.StatusCode.FAILED_PRECONDITION, str(exc))
         except DeidError:
@@ -73,7 +107,7 @@ class DeidService(deid_pb2_grpc.DeidServiceServicer):  # type: ignore[misc]
         )
 
     def _require_ready(self, context: grpc.ServicerContext[Any, Any]) -> None:
-        if not self._backend.ready:
+        if not self.readiness():
             context.abort(
                 grpc.StatusCode.FAILED_PRECONDITION,
                 "de-identification backend is not ready",

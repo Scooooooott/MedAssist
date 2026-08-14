@@ -1,0 +1,25 @@
+services:
+  gateway-native:
+    profiles: [native]
+    build:
+      context: ../..
+      dockerfile: deploy/native/Dockerfile.native
+      args:
+        SERVICE: gateway
+    environment:
+      MEDASSIST_JWK_SET_URI: ${MEDASSIST_JWK_SET_URI}
+      MEDASSIST_REDIS_HOST: redis
+    ports:
+      - "8080:8080"
+
+  identity-policy-native:
+    profiles: [native]
+    build:
+      context: ../..
+      dockerfile: deploy/native/Dockerfile.native
+      args:
+        SERVICE: identity-policy
+    environment:
+      MEDASSIST_JWK_SET_URI: ${MEDASSIST_JWK_SET_URI}
+    ports:
+      - "8081:8081"
